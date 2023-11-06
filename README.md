@@ -1,5 +1,7 @@
 # ReMatching
-This section of the repository is dedicated to the C++ implementation of the algorithm.
+This repository implements the remeshing algorithm presented in *ReMatching: Low-Resolution Representations for Scalable Shape Correspondence*.  
+- DOI: https://arxiv.org/abs/2305.09274
+- PDF: https://arxiv.org/abs/2305.09274
 
 ## Building instructions
 The building process is entirely carried out with CMake. If you have not already cloned the repository recursively, or if you have not updated the submodules, please run
@@ -36,6 +38,7 @@ Inside the project's root folder there is the directory `matlab`. The directory 
 - `compile.m`: a MATLAB script that compiles the Mex functions realizing the remeshing and resampling;
 - `rmt_remesh.m`: a MATLAB function that wraps the Mex function for the remeshing algorithm;
 - `rmt_resample.m`: a MATLAB function that wraps the Mex function for the resampling algorithm.
+- `rmt_wmap.m`: a MATLAB function that wraps the Mex function for computing the mapping that brings scalar functions from the remesh to the full-resolution shape.
 
 The compilation script `compile.m` assumes that the installation of the *CUT* library and this repository are carried out with the default settings, and that the compilation is ran from the `matlab` directory. **If this is not the case, please update the paths accordingly.**
 

@@ -35,5 +35,16 @@ void Resample(const double* Vin,
               int** Fout,
               size_t* NFout);
 
+void WeightMap(const double* VSrc,
+               int NVerts,
+               const int* FSrc,
+               int NFaces,
+               const double* VTrg,
+               int NTVerts,
+               int** UI,
+               int** UJ,
+               double** UV,
+               size_t* NNZ);
+
 
 } // namespace rmt
