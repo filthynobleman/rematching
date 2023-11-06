@@ -69,6 +69,7 @@ The configuration file must at least contain the string attribute `input_mesh` a
  - the string attribute `out_mesh`;
  - the boolean attribute `resample`;
  - the boolean attribute `evaluate`;
+ 
 The semantics of the attribute is the same as the command line.  
 
 The program also supports the help command as
