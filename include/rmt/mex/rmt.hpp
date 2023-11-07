@@ -11,6 +11,8 @@
  */
 #pragma once
 
+#include <cstddef>
+
 namespace rmt
 {
     

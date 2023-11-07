@@ -16,7 +16,14 @@ include_directories("${CMAKE_SOURCE_DIR}/ext/eigen")
 include_directories("${CMAKE_SOURCE_DIR}/ext/libigl/include")
 include_directories("${CMAKE_SOURCE_DIR}/ext/json/include")
 include_directories("${CMAKE_SOURCE_DIR}/install/cut/include")
-set(libCUT "${CMAKE_SOURCE_DIR}/install/cut/lib/cut.lib")
+if(MSVC)
+    set(libCUT "${CMAKE_SOURCE_DIR}/install/cut/lib/cut.lib")
+elseif(UNIX)
+    set(libCUT "${CMAKE_SOURCE_DIR}/install/cut/lib/libcut.a")
+endif()
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 
 
 # Include rematching library
@@ -29,7 +36,7 @@ add_library(RMT STATIC  "${CMAKE_SOURCE_DIR}/src/rmt/graph.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/eval.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/io.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/rmt.cpp")
-target_link_libraries(RMT ${libCUT})
+target_link_libraries(RMT ${libCUT} Threads::Threads)
 set_target_properties(RMT PROPERTIES CXX_STANDARD 17)
 
 
