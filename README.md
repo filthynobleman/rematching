@@ -1,4 +1,6 @@
-![CMake multi-platform](https://github.com/filthynobleman/rematching/actions/workflows/cmake-multi-platform.yml/badge.svg)
+![CMake Windows](https://github.com/filthynobleman/rematching/actions/workflows/cmake-windows.yml/badge.svg)
+![CMake Ubuntu](https://github.com/filthynobleman/rematching/actions/workflows/cmake-ubuntu.yml/badge.svg)
+![CMake Mac OS](https://github.com/filthynobleman/rematching/actions/workflows/cmake-macos.yml/badge.svg)
 
 # ReMatching
 This repository implements the remeshing algorithm presented in *ReMatching: Low-Resolution Representations for Scalable Shape Correspondence*.  
