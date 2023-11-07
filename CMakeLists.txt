@@ -43,7 +43,7 @@ set_target_properties(RMT PROPERTIES CXX_STANDARD 17)
 # Rematching for MATLAB
 add_library(MexRMT STATIC "${CMAKE_SOURCE_DIR}/src/mex/interface/rmt.cpp")
 target_link_libraries(MexRMT RMT)
-set_target_properties(RMT PROPERTIES CXX_STANDARD 17)
+set_target_properties(MexRMT PROPERTIES CXX_STANDARD 17)
 
 
 # Installation settings
