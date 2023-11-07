@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 3.16.0)
 project(ReMatching LANGUAGES C CXX)
 
 
+# Build and install libCUT
+include(ExternalProject)
+ExternalProject_Add(CUT
+                    SOURCE_DIR "${CMAKE_SOURCE_DIR}/ext/cut"
+                    BINARY_DIR "${CMAKE_SOURCE_DIR}/build-cut"
+                    INSTALL_DIR "${CMAKE_SOURCE_DIR}/install"
+                    CMAKE_ARGS "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/install")
+
 
 # Include dependencies
 include_directories("${CMAKE_SOURCE_DIR}/ext/eigen")

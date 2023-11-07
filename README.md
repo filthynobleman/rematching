@@ -11,17 +11,7 @@ git submodule update --init --recursive --remote
 
 For building the project, you need [CMake](https://cmake.org/) and a C++ compiler compliant with [C++17 standard](https://en.cppreference.com/w/cpp/compiler_support/17).  
 
-First you need to build the dependencies. The only library that needs to be built is [*CUT*](https://github.com/filthynobleman/cut). Execute the following commands
-```
-mkdir build-cut
-cd build-cut
-cmake ../ext/cut -DBUILD_SAMPLES=OFF -DCMAKE_INSTALL_PREFIX="../install"
-cmake --build . --config release --parallel
-cmake --install .
-```
-This will install the *CUT* library into the `install` directory of the project's root.  
-
-Go back to the root folder and execute
+From the root directory of the project, execute the following commands:
 ```
 mkdir build
 cd build
