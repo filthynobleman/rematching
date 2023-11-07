@@ -12,7 +12,7 @@
 #pragma once
 
 
-#include <eigen/Dense>
+#include <Eigen/Dense>
 
 
 namespace rmt
