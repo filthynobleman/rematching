@@ -11,11 +11,20 @@
  */
 #include <rmt/reconstruction.hpp>
 #include <unordered_map>
+#include <unordered_set>
 #include <set>
 
 using namespace rmt;
 
 typedef std::pair<int, std::pair<int, int>> Tri;
+
+struct MyPairHash
+{
+    std::size_t operator()(const std::pair<int, int> v) const noexcept
+    {
+        return (size_t)v.first ^ ((size_t)v.second << 1); // or use boost::hash_combine
+    }
+};
 
 void rmt::MeshFromVoronoi(const Graph & G, 
                           const std::vector<int>& Samples, 
@@ -79,6 +88,57 @@ void rmt::MeshFromVoronoi(const Graph & G,
             }
         }
     }
+
+    // Find all non-manifold edges
+    std::unordered_map<std::pair<int, int>, int, MyPairHash> ECount;
+    ECount.reserve(Samples.size() * 3);
+    std::unordered_set<std::pair<int, int>, MyPairHash> NMEdges;
+    NMEdges.reserve(Samples.size() * 3);
+    std::pair<int, int> ETmp[3];
+    for (auto t : Tris)
+    {
+        ETmp[0] = { std::min(t.first, t.second.first), std::max(t.first, t.second.first) };
+        ETmp[1] = { std::min(t.second.first, t.second.second), std::max(t.second.first, t.second.second) };
+        ETmp[2] = { std::min(t.first, t.second.second), std::max(t.first, t.second.second) };
+
+        for (int j = 0; j < 3; ++j)
+        {
+            if (ECount.find(ETmp[j]) == ECount.end())
+                ECount.emplace(ETmp[j], 0);
+            ECount[ETmp[j]] += 1;
+            if (ECount[ETmp[j]] > 2)
+                NMEdges.insert(ETmp[j]);
+        }
+    }
+
+    // Compute the manifold triangles
+    if (NMEdges.size() > 0)
+    {
+        std::set<Tri> ManTris;
+        for (auto t : Tris)
+        {
+            ETmp[0] = { std::min(t.first, t.second.first), std::max(t.first, t.second.first) };
+            ETmp[1] = { std::min(t.second.first, t.second.second), std::max(t.second.first, t.second.second) };
+            ETmp[2] = { std::min(t.first, t.second.second), std::max(t.first, t.second.second) };
+
+            // Count incident non-manifold edges
+            int NMCount = 0;
+            for (int j = 0; j < 3; ++j)
+            {
+                if (NMEdges.find(ETmp[j]) != NMEdges.end())
+                    NMCount += 1;
+            }
+
+            // If all its edges are non-manifold, it is a repeated patch and must be removed
+            if (NMCount == 3)
+                continue;
+
+            // Otherwise, we keep it for now
+            ManTris.insert(t);
+        }
+        Tris = std::move(ManTris);
+    }
+
 
     F.resize(Tris.size(), 3);
     int i = 0;
