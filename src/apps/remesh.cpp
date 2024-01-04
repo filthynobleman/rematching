@@ -9,6 +9,7 @@
  * 
  * @date        2023-07-17
  */
+#define NOMINMAX
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
@@ -18,6 +19,9 @@
 #include <igl/writeOBJ.h>
 #include <unsupported/Eigen/SparseExtra>
 #include <nlohmann/json.hpp>
+
+#include <igl/is_edge_manifold.h>
+#include <igl/is_vertex_manifold.h>
 
 #include <iostream>
 #include <fstream>
@@ -35,6 +39,8 @@ struct rmtArgs
     bool Resampling;
     bool Evaluate;
 };
+
+std::pair<int, int> NonManifoldGeometry(const Eigen::MatrixXi& F);
 
 rmtArgs ParseArgs(int argc, const char* const argv[]);
 void Usage(const std::string& Prog, bool IsError = false);
@@ -93,13 +99,20 @@ int main(int argc, const char* const argv[])
 
     std::cout << "Remeshing to " << Args.NumSamples << " vertices... ";
     StartTimer();
-    std::pair<std::vector<int>, std::vector<int>> VFPS;
-    VFPS = rmt::VoronoiFPS(Graph, Args.NumSamples);
+    auto VFPS = rmt::VoronoiFPS(Graph, Args.NumSamples);
 
     Eigen::MatrixXd VV;
     Eigen::MatrixXi FF;
-    rmt::MeshFromVoronoi(Graph, VFPS.first, VFPS.second, VV, FF);
-    rmt::ReorientFaces(VFPS.first, V, F, VV, FF);
+    rmt::MeshFromVoronoi(Graph, VFPS, VV, FF);
+    try
+    {
+        rmt::Refine(V, F, Graph, VFPS, VV, FF);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Cannot solve for a manifold triangulation.\n";
+        return EXIT_FAILURE;
+    }
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;
@@ -139,6 +152,8 @@ int main(int argc, const char* const argv[])
         rmt::RescaleInsideUnitBox(V);
         rmt::RescaleInsideUnitBox(VV);
         auto M = rmt::Evaluate(V, FOrig, VV, FF, nVertsOrig);
+        auto NMG = NonManifoldGeometry(FF);
+        bool IsNM = (NMG.first + NMG.second) > 0;
         t = StopTimer();
         std::cout << "Elapsed time is " << t << " s." << std::endl;
 
@@ -154,6 +169,9 @@ int main(int argc, const char* const argv[])
         std::cout << "    Max: " << M.MaxQuality << std::endl;
         std::cout << "    Avg: " << M.AvgQuality << std::endl;
         std::cout << "    Std: " << M.StdQuality << std::endl;
+        std::cout << "Mesh is " << (IsNM ? "non " : "") << "manifold:" << std::endl;
+        std::cout << "    Non-manifold vertices:  " << NMG.first << std::endl;
+        std::cout << "    Non-manifold edges:     " << NMG.second << std::endl;
     }
 
 
@@ -165,6 +183,40 @@ int main(int argc, const char* const argv[])
 
 
 
+
+
+std::pair<int, int> NonManifoldGeometry(const Eigen::MatrixXi& F)
+{
+    int NMV = 0;
+    int NME = 0;
+
+    // Vertex manifold
+    Eigen::VectorXi VM;
+    if (!igl::is_vertex_manifold(F, VM))
+    {
+        for (int i = 0; i < VM.rows(); ++i)
+            NMV += (VM[i] ? 0 : 1);
+    }
+    if (NMV > 0)
+    {
+        std::ofstream Stream;
+        Stream.open("non-manifold.txt", std::ios::out);
+        for (int i = 0; i < VM.rows(); ++i)
+            Stream << (VM[i] ? 0 : 1);
+        Stream.close();
+    }
+
+    // Compute edge map
+    Eigen::MatrixXi E, BF;
+    Eigen::VectorXi EMAP, EM;
+    if (!igl::is_edge_manifold(F, BF, E, EMAP, EM))
+    {
+        for (int i = 0; i < E.rows(); ++i)
+            NME += (EM[i] ? 0 : 1);
+    }
+
+    return { NMV, NME };
+}
 
 
 

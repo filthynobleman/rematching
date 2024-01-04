@@ -50,9 +50,9 @@ std::vector<double> rmt::Distances(const Graph& G, int N)
 }
 
 
-std::pair<std::vector<int>, std::vector<int>> rmt::VoronoiFPS(const Graph& G, 
-                                                                     int NSamples, 
-                                                                     int Seed)
+rmt::VoronoiPartitioning rmt::VoronoiFPS(const Graph& G, 
+                                          int NSamples, 
+                                          int Seed)
 {
     if (NSamples >= G.NumVertices())
     {
@@ -69,7 +69,7 @@ std::pair<std::vector<int>, std::vector<int>> rmt::VoronoiFPS(const Graph& G,
         return { Samples, Partition };
     }
 
-    std::mt19937 Eng(0);
+    std::mt19937 Eng(Seed);
     std::uniform_int_distribution<int> Distr(0, G.NumVertices() - 1);
 
     int NVerts = G.NumVertices();
@@ -90,35 +90,44 @@ std::pair<std::vector<int>, std::vector<int>> rmt::VoronoiFPS(const Graph& G,
         HDists.SetKey(p, 0);
         Samples[h] = p;
 
-        std::priority_queue<std::pair<double, int>,
-                            std::vector<std::pair<double, int>>,
-                            std::greater<std::pair<double, int>>> Q;
-        Dists[p]= 0;
-        Partition[p] = p;
-        Q.emplace(0, p);
-        while (!Q.empty())
-        {
-            std::pair<double, int> Next = Q.top();
-            Q.pop();
-
-            int Cur = Next.second;
-            double W = Next.first;
-
-            if (W < HDists.GetKey(Cur))
-                HDists.SetKey(Cur, W);
-
-            int Deg = G.NumAdjacents(Cur);
-            for (int j = 0; j < Deg; ++j)
-            {
-                WEdge Neig = G.GetAdjacent(Cur, j);
-                if (Dists[Neig.first] <= W + Neig.second)
-                    continue;
-                Dists[Neig.first] = W + Neig.second;
-                Q.emplace(Dists[Neig.first], Neig.first);
-                Partition[Neig.first] = p;
-            }
-        }
+        rmt::UpdateVoronoi(G, Dists, Partition, HDists, p);
     }
 
-    return { Samples, Partition };
+    return { Samples, Partition, Dists };
+}
+
+void rmt::UpdateVoronoi(const rmt::Graph& G,
+                        std::vector<double>& Dists,
+                        std::vector<int>& Partition,
+                        cut::MinHeap& HDists,
+                        int p)
+{
+    std::priority_queue<std::pair<double, int>,
+                            std::vector<std::pair<double, int>>,
+                            std::greater<std::pair<double, int>>> Q;
+    Dists[p]= 0;
+    Partition[p] = p;
+    Q.emplace(0, p);
+    while (!Q.empty())
+    {
+        std::pair<double, int> Next = Q.top();
+        Q.pop();
+
+        int Cur = Next.second;
+        double W = Next.first;
+
+        if (W < HDists.GetKey(Cur))
+            HDists.SetKey(Cur, W);
+
+        int Deg = G.NumAdjacents(Cur);
+        for (int j = 0; j < Deg; ++j)
+        {
+            WEdge Neig = G.GetAdjacent(Cur, j);
+            if (Dists[Neig.first] <= W + Neig.second)
+                continue;
+            Dists[Neig.first] = W + Neig.second;
+            Q.emplace(Dists[Neig.first], Neig.first);
+            Partition[Neig.first] = p;
+        }
+    }
 }

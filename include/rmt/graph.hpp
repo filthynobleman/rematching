@@ -29,6 +29,14 @@ namespace rmt
 typedef std::pair<int, double> WEdge;
 
 /**
+ * @brief       Path inside a weighted graph.
+ * 
+ * @details     A path inside a weighted graph is defined as sequence of weighted edges
+ *              and the sum of the total weights. The starting node has cost zero.
+ */
+typedef std::pair<double, std::vector<rmt::WEdge>> Path;
+
+/**
  * @brief       A graph-like data structure.
  * 
  * @details     This class represents a graph embedded in 3D space.\n 
@@ -61,6 +69,8 @@ public:
 
     const WEdge& GetAdjacent(int node_i, int adj_i) const;
 
+    rmt::Path DijkstraPath(int src, int dst) const;
+    int FarthestFiltered(int src, const std::vector<int>& Tag, int Filter) const;
     std::vector<int> ConnectedComponents() const;
 };
 

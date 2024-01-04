@@ -12,6 +12,7 @@
 #pragma once
 
 #include <rmt/graph.hpp>
+#include <rmt/voronoifps.hpp>
 #include <vector>
 
 
@@ -19,10 +20,23 @@ namespace rmt
 {
     
 void MeshFromVoronoi(const Graph& G,
-                     const std::vector<int>& Samples,
-                     const std::vector<int>& Partition,
+                     rmt::VoronoiPartitioning& Parts,
                      Eigen::MatrixXd& V,
                      Eigen::MatrixXi& F);
+
+void Refine(const Eigen::MatrixXd& VOld,
+            const Eigen::MatrixXi& FOld,
+            const rmt::Graph& G,
+            rmt::VoronoiPartitioning& Parts,
+            Eigen::MatrixXd& V,
+            Eigen::MatrixXi& F);
+
+bool _RefineStep(const Eigen::MatrixXd& VOld,
+                 const Eigen::MatrixXi& FOld,
+                 const rmt::Graph& G,
+                 rmt::VoronoiPartitioning& Parts,
+                 Eigen::MatrixXd& V,
+                 Eigen::MatrixXi& F);
 
 void ReorientFaces(const std::vector<int>& Samples,
                    const Eigen::MatrixXd& VOld,

@@ -11,15 +11,28 @@
  */
 #pragma once
 
+#include <cut/cut.hpp>
 #include <rmt/graph.hpp>
 
 
 namespace rmt
 {
+
+struct VoronoiPartitioning
+{
+    std::vector<int> Samples;
+    std::vector<int> Partition;
+    std::vector<double> Distances;
+};
     
 std::vector<double> Distances(const Graph& G, int N);
-std::pair<std::vector<int>, std::vector<int>> VoronoiFPS(const rmt::Graph& G, 
-                                                         int NSamples, 
-                                                         int Seed = 0);
+rmt::VoronoiPartitioning VoronoiFPS(const rmt::Graph& G, 
+                                     int NSamples, 
+                                     int Seed = 0);
+void UpdateVoronoi(const rmt::Graph& G,
+                   std::vector<double>& Dists,
+                   std::vector<int>& Partition,
+                   cut::MinHeap& HDists,
+                   int p);
 
 } // namespace rmt

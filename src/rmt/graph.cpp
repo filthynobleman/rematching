@@ -10,6 +10,7 @@
  * @date        2023-07-17
  */
 #include <rmt/graph.hpp>
+#include <cut/cut.hpp>
 #include <set>
 #include <queue>
 #include <algorithm>
@@ -182,6 +183,100 @@ const std::vector<Eigen::Vector3d>& Graph::GetVertices() const { return m_Verts;
 const WEdge& Graph::GetAdjacent(int node_i, int adj_i) const
 {
     return m_Adjs[m_Idxs[node_i] + adj_i];
+}
+
+
+rmt::Path Graph::DijkstraPath(int src, int dst) const
+{
+    Eigen::VectorXd Dists;
+    Dists.setConstant(NumVertices(), std::numeric_limits<double>::infinity());
+
+    Eigen::VectorXi Parent;
+    Parent.setConstant(NumVertices(), -1);
+
+    std::priority_queue<std::pair<double, int>,
+                        std::vector<std::pair<double, int>>,
+                        std::greater<std::pair<double, int>>> Q;
+    Dists[src] = 0.0;
+    Q.emplace(0.0, src);
+    while (!Q.empty())
+    {
+        int i;
+        double wi;
+        std::tie(wi, i) = Q.top();
+        Q.pop();
+
+        if (i == dst)
+            break;
+        
+        int Degree = NumAdjacents(i);
+        for (int jj = 0; jj < Degree; ++jj)
+        {
+            int j;
+            double wj;
+            std::tie(j, wj) = GetAdjacent(i, jj);
+            if (Dists[j] <= wi + wj)
+                continue;
+            Dists[j] = wi + wj;
+            Parent[j] = i;
+            Q.emplace(Dists[j], j);
+        }
+    }
+
+    std::vector<rmt::WEdge> Path;
+    double Length = Dists[dst];
+    while (Parent[dst] != -1)
+    {
+        Path.emplace_back(dst, Dists[dst] - Dists[Parent[dst]]);
+        dst = Parent[dst];
+    }
+    Path.emplace_back(dst, Dists[dst]);
+    std::reverse(Path.begin(), Path.end());
+    CUTAssert(Path[0].first == src);
+    return { Length, Path };
+}
+
+
+int rmt::Graph::FarthestFiltered(int src, const std::vector<int>& Tag, int Filter) const
+{
+    Eigen::VectorXd Dists;
+    Dists.setConstant(NumVertices(), std::numeric_limits<double>::infinity());
+
+    std::priority_queue<std::pair<double, int>,
+                        std::vector<std::pair<double, int>>,
+                        std::greater<std::pair<double, int>>> Q;
+    int Farthest = src;
+    double MaxDist = 0.0;
+    Dists[src] = 0.0;
+    Q.emplace(0.0, src);
+    while (!Q.empty())
+    {
+        int i;
+        double wi;
+        std::tie(wi, i) = Q.top();
+        Q.pop();
+        if (wi > MaxDist)
+        {
+            MaxDist = wi;
+            Farthest = i;
+        }
+        
+        int Degree = NumAdjacents(i);
+        for (int jj = 0; jj < Degree; ++jj)
+        {
+            int j;
+            double wj;
+            std::tie(j, wj) = GetAdjacent(i, jj);
+            if (Tag[j] != Filter)
+                continue;
+            if (Dists[j] <= wi + wj)
+                continue;
+            Dists[j] = wi + wj;
+            Q.emplace(Dists[j], j);
+        }
+    }
+
+    return Farthest;
 }
 
 

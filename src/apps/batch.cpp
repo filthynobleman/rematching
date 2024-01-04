@@ -176,15 +176,24 @@ int main(int argc, const char* const argv[])
             Stats[RunIdx] = { (int)(V.rows()), Graph.NumEdges(), (int)(F.rows()), NSamples };
 
             StartTimer();
-            std::pair<std::vector<int>, std::vector<int>> VFPS;
-            VFPS = rmt::VoronoiFPS(Graph, NSamples);
+            auto VFPS = rmt::VoronoiFPS(Graph, NSamples);
             Times[RunIdx].VoronoiFPSTime = StopTimer();
 
             StartTimer();
             Eigen::MatrixXd VV;
             Eigen::MatrixXi FF;
-            rmt::MeshFromVoronoi(Graph, VFPS.first, VFPS.second, VV, FF);
-            rmt::ReorientFaces(VFPS.first, V, F, VV, FF);
+            rmt::MeshFromVoronoi(Graph, VFPS, VV, FF);
+            try
+            {
+                rmt::Refine(V, F, Graph, VFPS, VV, FF);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "Cannot solve for a manifold triangulation.";
+                Failures[RunIdx] = true;
+            }
+            
+            // rmt::ReorientFaces(VFPS.Samples, V, F, VV, FF);
             Times[RunIdx].ReconstructionTime = StopTimer();
 
             Times[RunIdx].Total = Times[RunIdx].GraphTime + Times[RunIdx].ReconstructionTime + Times[RunIdx].ResampleTime + Times[RunIdx].VoronoiFPSTime;
