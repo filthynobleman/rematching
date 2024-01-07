@@ -103,7 +103,9 @@ int main(int argc, const char* const argv[])
 
     Eigen::MatrixXd VV;
     Eigen::MatrixXi FF;
-    rmt::MeshFromVoronoi(Graph, VFPS, VV, FF);
+    rmt::MeshFromVoronoi(V, F, VFPS, VV, FF);
+    // rmt::MeshFromVoronoi(Graph, VFPS, VV, FF);
+    // rmt::ReorientFaces(VFPS.Samples, V, F, VV, FF);
     try
     {
         rmt::Refine(V, F, Graph, VFPS, VV, FF);

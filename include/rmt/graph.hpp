@@ -71,6 +71,7 @@ public:
 
     rmt::Path DijkstraPath(int src, int dst) const;
     int FarthestFiltered(int src, const std::vector<int>& Tag, int Filter) const;
+    int FarthestAtBoundary(int src, const std::vector<int>& Tag, int Region, int Neighbor) const;
     std::vector<int> ConnectedComponents() const;
 };
 

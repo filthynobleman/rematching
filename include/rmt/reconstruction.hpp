@@ -24,6 +24,12 @@ void MeshFromVoronoi(const Graph& G,
                      Eigen::MatrixXd& V,
                      Eigen::MatrixXi& F);
 
+void MeshFromVoronoi(const Eigen::MatrixXd& VOld,
+                     const Eigen::MatrixXi& FOld,
+                     rmt::VoronoiPartitioning& Parts,
+                     Eigen::MatrixXd& V,
+                     Eigen::MatrixXi& F);
+
 void Refine(const Eigen::MatrixXd& VOld,
             const Eigen::MatrixXi& FOld,
             const rmt::Graph& G,

@@ -279,6 +279,48 @@ int rmt::Graph::FarthestFiltered(int src, const std::vector<int>& Tag, int Filte
     return Farthest;
 }
 
+int rmt::Graph::FarthestAtBoundary(int src, const std::vector<int>& Tag, int Region, int Neighbor) const
+{
+    Eigen::VectorXd Dists;
+    Dists.setConstant(NumVertices(), std::numeric_limits<double>::infinity());
+
+    std::priority_queue<std::pair<double, int>,
+                        std::vector<std::pair<double, int>>,
+                        std::greater<std::pair<double, int>>> Q;
+    int Farthest = src;
+    double MaxDist = 0.0;
+    Dists[src] = 0.0;
+    Q.emplace(0.0, src);
+    while (!Q.empty())
+    {
+        int i;
+        double wi;
+        std::tie(wi, i) = Q.top();
+        Q.pop();
+        
+        int Degree = NumAdjacents(i);
+        for (int jj = 0; jj < Degree; ++jj)
+        {
+            int j;
+            double wj;
+            std::tie(j, wj) = GetAdjacent(i, jj);
+            if (Tag[j] == Neighbor && wi > MaxDist)
+            {
+                MaxDist = wi;
+                Farthest = i;
+            }
+            if (Tag[j] != Region)
+                continue;
+            if (Dists[j] <= wi + wj)
+                continue;
+            Dists[j] = wi + wj;
+            Q.emplace(Dists[j], j);
+        }
+    }
+
+    return Farthest;
+}
+
 
 std::vector<int> Graph::ConnectedComponents() const
 {

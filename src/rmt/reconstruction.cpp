@@ -22,13 +22,21 @@
 
 using namespace rmt;
 
-typedef std::pair<int, std::pair<int, int>> Tri;
+typedef std::tuple<int, int, int> Tri;
 
 struct MyPairHash
 {
-    std::size_t operator()(const std::pair<int, int> v) const noexcept
+    std::size_t operator()(const std::pair<int, int>& v) const noexcept
     {
-        return (size_t)v.first ^ ((size_t)v.second << 1); // or use boost::hash_combine
+        return std::hash<int>{}(v.first) ^ (std::hash<int>{}(v.second) << 1); // or use boost::hash_combine
+    }
+};
+
+struct MyTriHash
+{
+    std::size_t operator()(const Tri& t) const noexcept
+    {
+        return std::hash<int>{}(std::get<0>(t)) ^ ((std::get<1>(t) ^ (std::get<2>(t) << 1)) << 1);
     }
 };
 
@@ -90,7 +98,7 @@ void rmt::MeshFromVoronoi(const Graph & G,
                     if (h == k)
                     {
                         // i, j, k is a triangle
-                        Tri t(i, { j, k });
+                        Tri t(i, j, k );
                         Tris.insert(t);
                     }
                 }
@@ -106,9 +114,9 @@ void rmt::MeshFromVoronoi(const Graph & G,
     std::pair<int, int> ETmp[3];
     for (auto t : Tris)
     {
-        ETmp[0] = { std::min(t.first, t.second.first), std::max(t.first, t.second.first) };
-        ETmp[1] = { std::min(t.second.first, t.second.second), std::max(t.second.first, t.second.second) };
-        ETmp[2] = { std::min(t.first, t.second.second), std::max(t.first, t.second.second) };
+        ETmp[0] = { std::min(std::get<0>(t), std::get<1>(t)), std::max(std::get<0>(t), std::get<1>(t)) };
+        ETmp[1] = { std::min(std::get<1>(t), std::get<2>(t)), std::max(std::get<1>(t), std::get<2>(t)) };
+        ETmp[2] = { std::min(std::get<0>(t), std::get<2>(t)), std::max(std::get<0>(t), std::get<2>(t)) };
 
         for (int j = 0; j < 3; ++j)
         {
@@ -126,9 +134,9 @@ void rmt::MeshFromVoronoi(const Graph & G,
         std::set<Tri> ManTris;
         for (auto t : Tris)
         {
-            ETmp[0] = { std::min(t.first, t.second.first), std::max(t.first, t.second.first) };
-            ETmp[1] = { std::min(t.second.first, t.second.second), std::max(t.second.first, t.second.second) };
-            ETmp[2] = { std::min(t.first, t.second.second), std::max(t.first, t.second.second) };
+            ETmp[0] = { std::min(std::get<0>(t), std::get<1>(t)), std::max(std::get<0>(t), std::get<1>(t)) };
+            ETmp[1] = { std::min(std::get<1>(t), std::get<2>(t)), std::max(std::get<1>(t), std::get<2>(t)) };
+            ETmp[2] = { std::min(std::get<0>(t), std::get<2>(t)), std::max(std::get<0>(t), std::get<2>(t)) };
 
             // Count incident non-manifold edges
             int NMCount = 0;
@@ -152,7 +160,56 @@ void rmt::MeshFromVoronoi(const Graph & G,
     F.resize(Tris.size(), 3);
     int i = 0;
     for (auto it = Tris.begin(); it != Tris.end(); it++)
-        F.row(i++) = Eigen::Vector3i(it->first, it->second.first, it->second.second);
+        F.row(i++) = Eigen::Vector3i(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it));
+}
+
+void rmt::MeshFromVoronoi(const Eigen::MatrixXd& VOld,
+                          const Eigen::MatrixXi& FOld,
+                          rmt::VoronoiPartitioning& Parts,
+                          Eigen::MatrixXd& V,
+                          Eigen::MatrixXi& F)
+{
+    auto& Samples = Parts.Samples;
+    auto& Partition = Parts.Partition;
+    auto& Dists = Parts.Distances;
+
+    // Retrieve vertices and remap indices
+    int nSamples = Samples.size();
+    V.resize(nSamples, 3);
+    std::unordered_map<int, int> VMap;
+    VMap.reserve(nSamples);
+    for (int i = 0; i < nSamples; ++i)
+    {
+        V.row(i) = VOld.row(Samples[i]);
+        VMap.emplace(Samples[i], i);
+    }
+
+    // Iterate over original faces and compute triangles incident on three partitions
+    std::unordered_set<Tri, MyTriHash> Tris;
+    Tris.reserve(3 * nSamples);
+    for (int i = 0; i < FOld.rows(); ++i)
+    {
+        if (Partition[FOld(i, 0)] == Partition[FOld(i, 1)])
+            continue;
+        if (Partition[FOld(i, 1)] == Partition[FOld(i, 2)])
+            continue;
+        if (Partition[FOld(i, 2)] == Partition[FOld(i, 0)])
+            continue;
+
+        Tri t = std::tie(VMap[Partition[FOld(i, 0)]], VMap[Partition[FOld(i, 1)]], VMap[Partition[FOld(i, 2)]]);
+        if (std::get<1>(t) < std::get<0>(t) && std::get<1>(t) < std::get<2>(t))
+            t = Tri(std::get<1>(t), std::get<2>(t), std::get<0>(t));
+        else if (std::get<2>(t) < std::get<0>(t) && std::get<2>(t) < std::get<1>(t))
+            t = Tri(std::get<2>(t), std::get<0>(t), std::get<1>(t));
+
+        Tris.insert(t);
+    }
+
+    // Create the new faces
+    F.resize(Tris.size(), 3);
+    int i = 0;
+    for (const Tri& t : Tris)
+        F.row(i++) = Eigen::RowVector3i(std::get<0>(t), std::get<1>(t), std::get<2>(t));
 }
 
 void rmt::Refine(const Eigen::MatrixXd& VOld,
@@ -189,7 +246,6 @@ bool rmt::_RefineStep(const Eigen::MatrixXd& VOld,
     if (!igl::is_edge_manifold(F, BF, E, EMAP, EM))
     {
         IsManifold = false;
-        std::cout << "Non manifold edges: " << (1 - EM.array()).sum() << std::endl;
         cut::MinHeap HM(Dists, true);
         auto OldP = Partition;
         for (int i = 0; i < EM.rows(); ++i)
@@ -197,18 +253,7 @@ bool rmt::_RefineStep(const Eigen::MatrixXd& VOld,
             if (EM[i]) 
                 continue;
 
-            auto PE = G.DijkstraPath(Samples[E(i, 0)], Samples[E(i, 1)]);
-            double l = 0;
-            int newp = -1;
-            for (auto we : PE.second)
-            {
-                l += we.second;
-                if (2 * l >= PE.first)
-                {
-                    newp = we.first;
-                    break;
-                }
-            }
+            int newp = G.FarthestAtBoundary(Samples[E(i, 0)], Partition, Samples[E(i, 0)], Samples[E(i, 1)]);
             CUTAssert(newp != -1);
             CUTAssert(newp != Samples[E(i, 0)]);
             CUTAssert(newp != Samples[E(i, 1)]);
@@ -222,7 +267,6 @@ bool rmt::_RefineStep(const Eigen::MatrixXd& VOld,
     if (!igl::is_vertex_manifold(F, VM))
     {
         IsManifold = false;
-        std::cout << "Non manifold vertices: " << (1 - VM.array()).sum() << std::endl;
         cut::MinHeap HM(Dists, true);
         for (int i = 0; i < VM.rows(); ++i)
         {
