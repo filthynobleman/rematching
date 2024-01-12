@@ -23,6 +23,7 @@ struct VoronoiPartitioning
     std::vector<int> Samples;
     std::vector<int> Partition;
     std::vector<double> Distances;
+    cut::MinHeap* HDists;
 };
     
 std::vector<double> Distances(const Graph& G, int N);
@@ -34,5 +35,18 @@ void UpdateVoronoi(const rmt::Graph& G,
                    std::vector<int>& Partition,
                    cut::MinHeap& HDists,
                    int p);
+
+void GeometricMeasures(const Eigen::MatrixXi& F,
+                       const Eigen::MatrixXi& E,
+                       const Eigen::VectorXi& BE,
+                       const rmt::VoronoiPartitioning& Parts,
+                       Eigen::VectorXi& EulerChar);
+
+void GeometricMeasures(const Eigen::MatrixXi& F,
+                       const Eigen::MatrixXi& E,
+                       const Eigen::VectorXi& BE,
+                       const rmt::VoronoiPartitioning& Parts,
+                       const std::vector<Eigen::Vector3i>& Regions,
+                       std::vector<int>& EulerChar);
 
 } // namespace rmt

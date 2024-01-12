@@ -16,6 +16,8 @@
 #include <igl/is_edge_manifold.h>
 #include <igl/per_face_normals.h>
 #include <igl/per_vertex_normals.h>
+#include <igl/boundary_loop.h>
+#include <igl/euler_characteristic.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
@@ -210,81 +212,6 @@ void rmt::MeshFromVoronoi(const Eigen::MatrixXd& VOld,
     int i = 0;
     for (const Tri& t : Tris)
         F.row(i++) = Eigen::RowVector3i(std::get<0>(t), std::get<1>(t), std::get<2>(t));
-}
-
-void rmt::Refine(const Eigen::MatrixXd& VOld,
-                 const Eigen::MatrixXi& FOld,
-                 const rmt::Graph& G,
-                 rmt::VoronoiPartitioning& Parts,
-                 Eigen::MatrixXd& V,
-                 Eigen::MatrixXi& F)
-{
-    do { } 
-    while (rmt::_RefineStep(VOld, FOld, G, Parts, V, F));
-}
-
-
-bool rmt::_RefineStep(const Eigen::MatrixXd& VOld,
-                      const Eigen::MatrixXi& FOld,
-                      const rmt::Graph& G,
-                      rmt::VoronoiPartitioning& Parts,
-                      Eigen::MatrixXd& V,
-                      Eigen::MatrixXi& F)
-{
-    auto& Samples = Parts.Samples;
-    auto& Partition = Parts.Partition;
-    auto& Dists = Parts.Distances;
-
-    // Reorient faces
-    rmt::ReorientFaces(Samples, VOld, FOld, V, F);
-
-    // Check non-manifoldness
-    bool IsManifold = true;
-    // Check for non-manifold edges
-    Eigen::MatrixXi E, BF;
-    Eigen::VectorXi EMAP, EM;
-    if (!igl::is_edge_manifold(F, BF, E, EMAP, EM))
-    {
-        IsManifold = false;
-        cut::MinHeap HM(Dists, true);
-        auto OldP = Partition;
-        for (int i = 0; i < EM.rows(); ++i)
-        {
-            if (EM[i]) 
-                continue;
-
-            int newp = G.FarthestAtBoundary(Samples[E(i, 0)], Partition, Samples[E(i, 0)], Samples[E(i, 1)]);
-            CUTAssert(newp != -1);
-            CUTAssert(newp != Samples[E(i, 0)]);
-            CUTAssert(newp != Samples[E(i, 1)]);
-            Samples.emplace_back(newp);
-            rmt::UpdateVoronoi(G, Dists, Partition, HM, newp);
-        }
-    }
-
-    // Check for non-manifold vertices
-    Eigen::VectorXi VM;
-    if (!igl::is_vertex_manifold(F, VM))
-    {
-        IsManifold = false;
-        cut::MinHeap HM(Dists, true);
-        for (int i = 0; i < VM.rows(); ++i)
-        {
-            if (VM[i])
-                continue;
-            
-            int newp = G.FarthestFiltered(Samples[i], Partition, Samples[i]);
-            CUTAssert(newp != Samples[i]);
-            Samples.emplace_back(newp);
-            rmt::UpdateVoronoi(G, Dists, Partition, HM, newp);
-        }
-    }
-
-    // Try reconstructing again
-    if (!IsManifold)
-        rmt::MeshFromVoronoi(G, Parts, V, F);
-    // If input is manifold, no changes are required
-    return !IsManifold;
 }
 
 

@@ -75,4 +75,12 @@ public:
     std::vector<int> ConnectedComponents() const;
 };
 
+
+rmt::Graph DualGraph(const Eigen::MatrixXd& V, 
+                     const Eigen::MatrixXi& F,
+                     Eigen::MatrixXi& uE,
+                     Eigen::MatrixXi& uDE,
+                     Eigen::VectorXi& e2de,
+                     Eigen::VectorXi& de2e);
+
 } // namespace rmt

@@ -81,7 +81,8 @@ rmt::VoronoiPartitioning rmt::VoronoiFPS(const Graph& G,
     std::vector<int> Samples;
     Samples.resize(NSamples, p);
 
-    cut::MinHeap HDists(Dists, true);
+    cut::MinHeap* _HDists = new cut::MinHeap(Dists, true);
+    cut::MinHeap& HDists = *_HDists;
 
     for (int h = 1; h < NSamples; ++h)
     {
@@ -93,7 +94,7 @@ rmt::VoronoiPartitioning rmt::VoronoiFPS(const Graph& G,
         rmt::UpdateVoronoi(G, Dists, Partition, HDists, p);
     }
 
-    return { Samples, Partition, Dists };
+    return { Samples, Partition, Dists, _HDists };
 }
 
 void rmt::UpdateVoronoi(const rmt::Graph& G,
@@ -130,4 +131,72 @@ void rmt::UpdateVoronoi(const rmt::Graph& G,
             Partition[Neig.first] = p;
         }
     }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+void rmt::GeometricMeasures(const Eigen::MatrixXi& F,
+                            const Eigen::MatrixXi& E,
+                            const Eigen::VectorXi& BE,
+                            const rmt::VoronoiPartitioning& Parts,
+                            Eigen::VectorXi& EulerChar)
+{
+    // Surface elements count
+    Eigen::MatrixXi Elems;
+    Elems.setZero(Parts.Samples.size(), 4);
+
+    // Iterate over vertices to count the dual faces
+    for (int i = 0; i < Parts.Partition.size(); ++i)
+        Elems(Parts.Partition[i], 0) += 1;
+
+    // Iterate over triangles to determine the number of dual vertices
+    int p[3];
+    for (int i = 0; i < F.rows(); ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+            p[j] = Parts.Partition[F(i, 0)];
+        
+        Elems(p[0], 1) += 1;
+        // If all vertices belongs to the same region, we have already counted the vertex
+        if (p[0] == p[1] && p[1] == p[2])
+            continue;
+        // If two vertices belongs to the same region, we need to count the other one
+        else if (p[0] == p[2] || p[1] == p[2])
+            Elems(p[1], 1) += 1;
+        else if (p[0] == p[1])
+            Elems(p[2], 1) += 1;
+        // If they are all different, we need to count the other two
+        else
+        {
+            Elems(p[1], 1) += 1;
+            Elems(p[2], 1) += 1;
+        }
+    }
+
+    // Iterate over edges to determine the number of dual edges
+    for (int i = 0; i < E.rows(); ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+            p[j] = Parts.Partition[E(i, 0)];
+            
+        int ColIdx = BE[i] ? 2 : 3;
+        Elems(p[0], ColIdx) += 1;
+        if (p[1] != p[0])
+            Elems(p[1], ColIdx) += 1;
+    }
+    // Internal edges are counted twice
+    Elems.col(2) /= 2;
+
+    // Compute the Euler characteristics
+    EulerChar = Elems.col(0) + Elems.col(1) - Elems.col(2) - Elems.col(3);
 }

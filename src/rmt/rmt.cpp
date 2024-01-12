@@ -20,7 +20,6 @@ void rmt::Remesh(const Eigen::MatrixXd & Vin,
 {
     rmt::Graph Graph(Vin, Fin);
     auto VFPS = rmt::VoronoiFPS(Graph, NSamples);
-    rmt::MeshFromVoronoi(Graph, VFPS, Vout, Fout);
-    rmt::Refine(Vin, Fin, Graph, VFPS, Vout, Fout);
-    // rmt::ReorientFaces(VFPS.Samples, Vin, Fin, Vout, Fout);
+    rmt::MeshFromVoronoi(Vin, Fin, VFPS, Vout, Fout);
+    rmt::ReorientFaces(VFPS.Samples, Vin, Fin, Vout, Fout);
 }

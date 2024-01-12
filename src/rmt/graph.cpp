@@ -15,6 +15,11 @@
 #include <queue>
 #include <algorithm>
 
+#define NOMINMAX
+// #include <igl/triangle_triangle_adjacency.h>
+#include <igl/edge_flaps.h>
+#include <igl/boundary_loop.h>
+
 
 using namespace rmt;
 
@@ -368,4 +373,130 @@ std::vector<int> Graph::ConnectedComponents() const
     }
 
     return CC;
+}
+
+
+
+
+
+
+
+struct DGEdgeHash
+{
+    std::size_t operator()(const Edge& E) const noexcept
+    {
+        return std::hash<int>{}(E.first) ^ (std::hash<int>{}(E.second) << 1);
+    }
+};
+
+
+
+rmt::Graph rmt::DualGraph(const Eigen::MatrixXd& V,
+                          const Eigen::MatrixXi& F,
+                          Eigen::MatrixXi& uE,
+                          Eigen::MatrixXi& uDE,
+                          Eigen::VectorXi& e2de,
+                          Eigen::VectorXi& de2e)
+{
+    // Compute edge flaps
+    Eigen::VectorXi EMap;
+    Eigen::MatrixXi EF;
+    Eigen::MatrixXi EI;
+    igl::edge_flaps(F, uE, EMap, EF, EI);
+
+    // Additional stuff used by the algorithm
+    // The current number of vertices in the dual mesh
+    int NDVerts = F.rows();
+    // The map from boundary vertices to dual vertices
+    std::unordered_map<int, int> BVMap;
+    BVMap.reserve(std::sqrt(V.rows())); // No real reason to use sqrt(V)
+    // The map from dual edges to indices of primal edges
+    std::unordered_map<Edge, int, DGEdgeHash> DE2EMap;
+    DE2EMap.reserve(2 * uE.rows());
+
+    // Compute the set of edges
+    std::vector<Edge> Edges;
+    Edges.reserve(3 * F.rows());
+    for (int i = 0; i < EF.rows(); ++i)
+    {
+        // Get edge vertices
+        int Face = EF(i, 0);
+        int Corner = EI(i, 0);
+        if (Face < 0)
+        {
+            Face = EF(i, 1);
+            Corner = EI(i, 1);
+        }
+        int PrimEdge = EMap[Face + F.rows() * Corner];
+        
+        // Get opposite faces
+        int f0 = EF(i, 0);
+        int f1 = EF(i, 1);
+        if (f0 > f1)
+            std::swap(f0, f1);
+        // If edge has opposite faces, connect them
+        if (f0 >= 0 && f1 >= 0)
+        {
+            Edge e(f0, f1);
+            Edges.emplace_back(e);
+            DE2EMap.emplace(e, PrimEdge);
+            continue;
+        }
+
+        // If one of the halfedges is boundary, we first create a new vertex to connect with the face
+        int NewV = NDVerts++;
+        if (f0 < 0)
+            std::swap(f0, f1);
+        Edge e(std::min(f0, NewV), std::max(f0, NewV));
+        Edges.emplace_back(e);
+        DE2EMap.emplace(e, PrimEdge);
+
+        // Connect that new vertex to the endpoints of the edge, creating new vertices if needed
+        Corner = EI(i, 0);
+        if (EF(i, 0) < 0)
+            Corner = EI(i, 1);
+        
+        f0 = Corner + 1;
+        if (f0 > 2)
+            f0 = 0;
+        f1 = f0 + 1;
+        if (f1 > 2)
+            f1 = 0;
+
+        f0 = F(i, f0);
+        f1 = F(i, f1);
+        if (BVMap.find(f0) == BVMap.end())
+            BVMap.emplace(f0, NDVerts++);
+        if (BVMap.find(f1) == BVMap.end())
+            BVMap.emplace(f1, NDVerts++);
+        
+        e = Edge(std::min(NewV, BVMap[f0]), std::max(NewV, BVMap[f0]));
+        DE2EMap.emplace(e, -1);
+        Edges.emplace_back(e);
+        e = Edge(std::min(NewV, BVMap[f1]), std::max(NewV, BVMap[f1]));
+        DE2EMap.emplace(e, -1);
+        Edges.emplace_back(e);
+    }
+    std::sort(Edges.begin(), Edges.end());
+    auto EEnd = std::unique(Edges.begin(), Edges.end());
+    Edges.erase(EEnd, Edges.end());
+
+    // Compute edge maps
+    uDE.resize(Edges.size(), 2);
+    e2de.resize(uE.rows());
+    de2e.resize(uDE.rows());
+    for (int i = 0; i < Edges.size(); ++i)
+    {
+        uDE(i, 0) = Edges[i].first;
+        uDE(i, 1) = Edges[i].second;
+        int pe = DE2EMap[Edges[i]];
+        if (pe >= 0)
+            e2de[pe] = i;
+        de2e[i] = pe;
+    }
+
+    // We don't care about vertex positions or edge lengths, only connectivity
+    Eigen::MatrixXd VV;
+    VV.setZero(NDVerts, 3);
+    return rmt::Graph(VV, Edges);
 }
