@@ -42,149 +42,21 @@ struct MyTriHash
     }
 };
 
-void rmt::MeshFromVoronoi(const Graph & G, 
-                          rmt::VoronoiPartitioning& Parts,
-                          Eigen::MatrixXd& V, 
-                          Eigen::MatrixXi& F)
-{
-    auto& Samples = Parts.Samples;
-    auto& Partition = Parts.Partition;
-    auto& Dists = Parts.Distances;
-
-    // Retrieve vertices and remap indices
-    int nSamples = Samples.size();
-    V.resize(nSamples, 3);
-    std::unordered_map<int, int> VMap;
-    VMap.reserve(nSamples);
-    for (int i = 0; i < nSamples; ++i)
-    {
-        V.row(i) = G.GetVertex(Samples[i]);
-        VMap.emplace(Samples[i], i);
-    }
-
-    // Determine edges
-    std::set<std::pair<int, int>> Edges;
-    int nVerts = G.NumVertices();
-    for (int i = 0; i < nVerts; ++i)
-    {
-        int nAdjs = G.NumAdjacents(i);
-        for (int jj = 0; jj < nAdjs; ++jj)
-        {
-            int j = G.GetAdjacent(i, jj).first;
-            if (Partition[i] != Partition[j])
-                Edges.emplace(VMap[Partition[i]], VMap[Partition[j]]);
-        }
-    }
-
-    // Create geodesic Delaunay graph
-    Graph DG(V, Edges);
-
-    // Find all 3-cycles in graph
-    std::set<Tri> Tris;
-    for (int i = 0; i < nSamples; ++i)
-    {
-        int nAdjsI = DG.NumAdjacents(i);
-        for (int jj = 0; jj < nAdjsI; ++jj)
-        {
-            int j = DG.GetAdjacent(i, jj).first;
-            // If j < i, we already covered the case when iterating over j
-            if (j < i)
-                continue;
-            int nAdjsJ = DG.NumAdjacents(j);
-            for (int kk = jj + 1; kk < nAdjsI; ++kk)
-            {
-                int k = DG.GetAdjacent(i, kk).first;
-                for (int hh = 0; hh < nAdjsJ; ++hh)
-                {
-                    int h = DG.GetAdjacent(j, hh).first;
-                    if (h == k)
-                    {
-                        // i, j, k is a triangle
-                        Tri t(i, j, k );
-                        Tris.insert(t);
-                    }
-                }
-            }
-        }
-    }
-
-    // Find all non-manifold edges
-    std::unordered_map<std::pair<int, int>, int, MyPairHash> ECount;
-    ECount.reserve(Samples.size() * 3);
-    std::unordered_set<std::pair<int, int>, MyPairHash> NMEdges;
-    NMEdges.reserve(Samples.size() * 3);
-    std::pair<int, int> ETmp[3];
-    for (auto t : Tris)
-    {
-        ETmp[0] = { std::min(std::get<0>(t), std::get<1>(t)), std::max(std::get<0>(t), std::get<1>(t)) };
-        ETmp[1] = { std::min(std::get<1>(t), std::get<2>(t)), std::max(std::get<1>(t), std::get<2>(t)) };
-        ETmp[2] = { std::min(std::get<0>(t), std::get<2>(t)), std::max(std::get<0>(t), std::get<2>(t)) };
-
-        for (int j = 0; j < 3; ++j)
-        {
-            if (ECount.find(ETmp[j]) == ECount.end())
-                ECount.emplace(ETmp[j], 0);
-            ECount[ETmp[j]] += 1;
-            if (ECount[ETmp[j]] > 2)
-                NMEdges.insert(ETmp[j]);
-        }
-    }
-
-    // Compute the manifold triangles
-    if (NMEdges.size() > 0)
-    {
-        std::set<Tri> ManTris;
-        for (auto t : Tris)
-        {
-            ETmp[0] = { std::min(std::get<0>(t), std::get<1>(t)), std::max(std::get<0>(t), std::get<1>(t)) };
-            ETmp[1] = { std::min(std::get<1>(t), std::get<2>(t)), std::max(std::get<1>(t), std::get<2>(t)) };
-            ETmp[2] = { std::min(std::get<0>(t), std::get<2>(t)), std::max(std::get<0>(t), std::get<2>(t)) };
-
-            // Count incident non-manifold edges
-            int NMCount = 0;
-            for (int j = 0; j < 3; ++j)
-            {
-                if (NMEdges.find(ETmp[j]) != NMEdges.end())
-                    NMCount += 1;
-            }
-
-            // If all its edges are non-manifold, it is a repeated patch and must be removed
-            if (NMCount == 3)
-                continue;
-
-            // Otherwise, we keep it for now
-            ManTris.insert(t);
-        }
-        Tris = std::move(ManTris);
-    }
-
-
-    F.resize(Tris.size(), 3);
-    int i = 0;
-    for (auto it = Tris.begin(); it != Tris.end(); it++)
-        F.row(i++) = Eigen::Vector3i(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it));
-}
-
 void rmt::MeshFromVoronoi(const Eigen::MatrixXd& VOld,
                           const Eigen::MatrixXi& FOld,
                           rmt::VoronoiPartitioning& Parts,
                           Eigen::MatrixXd& V,
                           Eigen::MatrixXi& F)
 {
-    auto& Samples = Parts.Samples;
-    auto& Partition = Parts.Partition;
-    auto& Dists = Parts.Distances;
+    auto& Samples = Parts.GetSamples();
+    auto& Partition = Parts.GetPartitions();
+    auto& Dists = Parts.GetDistances();
 
     // Retrieve vertices and remap indices
     int nSamples = Samples.size();
     V.resize(nSamples, 3);
-    std::unordered_map<int, int> VMap;
-    VMap.reserve(nSamples);
     for (int i = 0; i < nSamples; ++i)
-    {
         V.row(i) = VOld.row(Samples[i]);
-        VMap.emplace(Samples[i], i);
-    }
 
     // Iterate over original faces and compute triangles incident on three partitions
     std::unordered_set<Tri, MyTriHash> Tris;
@@ -198,7 +70,7 @@ void rmt::MeshFromVoronoi(const Eigen::MatrixXd& VOld,
         if (Partition[FOld(i, 2)] == Partition[FOld(i, 0)])
             continue;
 
-        Tri t = std::tie(VMap[Partition[FOld(i, 0)]], VMap[Partition[FOld(i, 1)]], VMap[Partition[FOld(i, 2)]]);
+        Tri t = std::tie(Partition[FOld(i, 0)], Partition[FOld(i, 1)], Partition[FOld(i, 2)]);
         if (std::get<1>(t) < std::get<0>(t) && std::get<1>(t) < std::get<2>(t))
             t = Tri(std::get<1>(t), std::get<2>(t), std::get<0>(t));
         else if (std::get<2>(t) < std::get<0>(t) && std::get<2>(t) < std::get<1>(t))

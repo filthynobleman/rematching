@@ -47,9 +47,6 @@ void Usage(const std::string& Prog, bool IsError = false);
 
 int main(int argc, const char* const argv[])
 {
-    Eigen::MatrixXd V;
-    Eigen::MatrixXi F;
-
     auto Args = ParseArgs(argc, argv);
     double TotTime = 0.0;
     double t = 0.0;
@@ -57,57 +54,77 @@ int main(int argc, const char* const argv[])
 
     std::cout << "Loading mesh " << Args.InMesh << "... ";
     StartTimer();
-    if (!rmt::LoadMesh(Args.InMesh, V, F))
-    {
-        std::cerr << "Cannot load mesh." << std::endl;
-        return -1;
-    }
+    rmt::Mesh Mesh(Args.InMesh);
     t = StopTimer();
     std::cout << "Elapsed time is " << t << " s." << std::endl;
 
-    std::cout << "Number of vertices:  " << V.rows() << std::endl;
-    std::cout << "Number of triangles: " << F.rows() << std::endl;
+    std::cout << "Number of vertices:  " << Mesh.NumVertices() << std::endl;
+    std::cout << "Number of triangles: " << Mesh.NumTriangles() << std::endl;
 
-    int nVertsOrig = V.rows();
-    auto FOrig = F;
+    int nVertsOrig = Mesh.NumVertices();
+    Eigen::MatrixXi FOrig = Mesh.GetTriangles();
     if (Args.Resampling)
     {
         std::cout << "Applying resampling... ";
         StartTimer();
-        double MEL = rmt::MaxEdgeLength(V, F, Args.NumSamples);
-        rmt::ResampleMesh(V, F, MEL);
+        Mesh.Resample(Args.NumSamples);
         t = StopTimer();
         TotTime += t;
         std::cout << "Elapsed time is " << t << " s." << std::endl;
-        std::cout << "Number of vertices (after resampling):  " << V.rows() << std::endl;
-        std::cout << "Number of triangles (after resampling): " << F.rows() << std::endl;
+        std::cout << "Number of vertices (after resampling):  " << Mesh.NumVertices() << std::endl;
+        std::cout << "Number of triangles (after resampling): " << Mesh.NumTriangles() << std::endl;
     }
 
-    std::cout << "Building graph... ";
+    std::cout << "Computing mesh edges and boundaries... ";
     StartTimer();
-    rmt::Graph Graph(V, F);
+    Mesh.ComputeEdgesAndBoundaries();
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;
 
-    auto CC = Graph.ConnectedComponents();
-    int NumCCs = 0;
-    for (int i = 0; i < CC.size(); ++i)
-        NumCCs = std::max(NumCCs, CC[i]);
-    NumCCs += 1;
-    std::cout << "Number of connected components: " << NumCCs << std::endl;
-
-    std::cout << "Remeshing to " << Args.NumSamples << " vertices... ";
+    std::cout << "Computing Voronoi FPS with " << Args.NumSamples << " samples... ";
     StartTimer();
-    auto VFPS = rmt::VoronoiFPS(Graph, Args.NumSamples);
+    rmt::VoronoiPartitioning VPart(Mesh);
+    while (VPart.NumSamples() < Args.NumSamples)
+        VPart.AddSample(VPart.FarthestVertex());
+    t = StopTimer();
+    TotTime += t;
+    std::cout << "Elapsed time is " << t << " s." << std::endl;
 
+    std::cout << "Refining sampling to ensure closed ball property... ";
+    StartTimer();
+    rmt::FlatUnion FU(Mesh, VPart);
+    // for (int i = 0; i < 3; ++i)
+    // {
+    //     std::ofstream Stream;
+    //     Stream.open("partitioning-" + std::to_string(i) + ".txt", std::ios::out);
+    //     for (int j = 0; j < Mesh.NumVertices(); ++j)
+    //         Stream << VPart.GetPartition(j) << '\n';
+    //     Stream.close();
+
+    //     FU.DetermineRegions();
+    //     FU.ComputeTopologies();
+    //     FU.FixIssues();
+    // }
+    do
+    {
+        FU.DetermineRegions();
+        FU.ComputeTopologies();
+    } while (!FU.FixIssues());
+    t = StopTimer();
+    TotTime += t;
+    std::cout << "Elapsed time is " << t << " s." << std::endl;
+    std::cout << "Final vertex count is " << VPart.NumSamples() << '.' << std::endl;
+    
+    std::cout << "Reconstructing mesh... ";
+    StartTimer();
     Eigen::MatrixXd VV;
     Eigen::MatrixXi FF;
-    rmt::MeshFromVoronoi(V, F, VFPS, VV, FF);
-    rmt::ReorientFaces(VFPS.Samples, V, F, VV, FF);
+    rmt::MeshFromVoronoi(Mesh.GetVertices(), Mesh.GetTriangles(), VPart, VV, FF);
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;
+
 
     std::cout << "Total remeshing time is " << TotTime << " s." << std::endl;
     
@@ -131,7 +148,7 @@ int main(int argc, const char* const argv[])
     StartTimer();
     std::string WMap = Args.OutMesh;
     WMap = WMap.substr(0, WMap.rfind('.')) + ".mat";
-    auto W = rmt::WeightMap(V, VV, FF, nVertsOrig);
+    auto W = rmt::WeightMap(Mesh.GetVertices(), VV, FF, nVertsOrig);
     rmt::ExportWeightmap(WMap, W);
     t = StopTimer();
     std::cout << "Elapsed time is " << t << " s." << std::endl;
@@ -141,6 +158,7 @@ int main(int argc, const char* const argv[])
     {
         std::cout << "Evaluating the remeshing... ";
         StartTimer();
+        Eigen::MatrixXd V = Mesh.GetVertices();
         rmt::RescaleInsideUnitBox(V);
         rmt::RescaleInsideUnitBox(VV);
         auto M = rmt::Evaluate(V, FOrig, VV, FF, nVertsOrig);
@@ -188,14 +206,6 @@ std::pair<int, int> NonManifoldGeometry(const Eigen::MatrixXi& F)
     {
         for (int i = 0; i < VM.rows(); ++i)
             NMV += (VM[i] ? 0 : 1);
-    }
-    if (NMV > 0)
-    {
-        std::ofstream Stream;
-        Stream.open("non-manifold.txt", std::ios::out);
-        for (int i = 0; i < VM.rows(); ++i)
-            Stream << (VM[i] ? 0 : 1);
-        Stream.close();
     }
 
     // Compute edge map

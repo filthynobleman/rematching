@@ -32,6 +32,9 @@ private:
     // Identifies boundary (unique) edges #E x 1
     Eigen::VectorXi m_BE;
 
+    // Identifies boundary vertices #V x 1
+    Eigen::VectorXi m_BV;
+
 
 public:
     Mesh(const Eigen::MatrixXd& V,
@@ -43,12 +46,29 @@ public:
     rmt::Mesh& operator=(rmt::Mesh&& M);
     ~Mesh();
 
+    int NumVertices() const;
+    int NumBoundaryVertices() const;
+    int NumEdges() const;
+    int NumBoundaryEdges() const;
+    int NumTriangles() const;
+
     const Eigen::MatrixXd& GetVertices() const;
     const Eigen::MatrixXi& GetTriangles() const;
     const Eigen::MatrixXi& GetEdges() const;
     const Eigen::VectorXi& GetBoundaryEdges() const;
+    const Eigen::VectorXi& GetBoundaryVertices() const;
 
-    void ComputeEdges();
+    void ComputeEdgesAndBoundaries();
+
+    void Scale(double Alpha);
+    void Translate(const Eigen::Vector3d& Movement);
+    void Translate(const Eigen::VectorXd& Movement);
+
+    void CenterAtOrigin();
+    void RescaleInsideUnitBox();
+    void RescaleInsideUnitSphere();
+
+    void Resample(int OutputSize);
 };
 
 

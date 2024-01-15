@@ -1,52 +1,53 @@
 /**
  * @file        voronoifps.hpp
  * 
- * @brief       Computation of fast geodesic Voronoi FPS.
+ * @brief       Declaration of class rmt::VoronoiPartitioning.
  * 
  * @author      Filippo Maggioli\n
  *              (maggioli@di.uniroma1.it, maggioli.filippo@gmail.com)\n
  *              Sapienza, University of Rome - Department of Computer Science
  * 
- * @date        2023-07-17
+ * @date        2024-01-15
  */
 #pragma once
 
-#include <cut/cut.hpp>
 #include <rmt/graph.hpp>
+#include <rmt/mesh.hpp>
+#include <cut/cut.hpp>
 
 
 namespace rmt
 {
-
-struct VoronoiPartitioning
-{
-    std::vector<int> Samples;
-    std::vector<int> Partition;
-    std::vector<double> Distances;
-    cut::MinHeap* HDists;
-};
     
-std::vector<double> Distances(const Graph& G, int N);
-rmt::VoronoiPartitioning VoronoiFPS(const rmt::Graph& G, 
-                                     int NSamples, 
-                                     int Seed = 0);
-void UpdateVoronoi(const rmt::Graph& G,
-                   std::vector<double>& Dists,
-                   std::vector<int>& Partition,
-                   cut::MinHeap& HDists,
-                   int p);
+class VoronoiPartitioning
+{
+private:
+    rmt::Graph m_G;
+    std::vector<int> m_Samples;
+    Eigen::VectorXi m_Partitions;
+    Eigen::VectorXd m_Distances;
+    cut::MinHeap* m_HDists;
 
-void GeometricMeasures(const Eigen::MatrixXi& F,
-                       const Eigen::MatrixXi& E,
-                       const Eigen::VectorXi& BE,
-                       const rmt::VoronoiPartitioning& Parts,
-                       Eigen::VectorXi& EulerChar);
 
-void GeometricMeasures(const Eigen::MatrixXi& F,
-                       const Eigen::MatrixXi& E,
-                       const Eigen::VectorXi& BE,
-                       const rmt::VoronoiPartitioning& Parts,
-                       const std::vector<Eigen::Vector3i>& Regions,
-                       std::vector<int>& EulerChar);
+public:
+    VoronoiPartitioning(const rmt::Mesh& M);
+    VoronoiPartitioning(rmt::VoronoiPartitioning&& VP);
+    rmt::VoronoiPartitioning& operator=(rmt::VoronoiPartitioning&& VP);
+    ~VoronoiPartitioning();
+
+    double GetDistance(int i) const;
+    const Eigen::VectorXd& GetDistances() const;
+    int GetPartition(int i) const;
+    const Eigen::VectorXi& GetPartitions() const;
+    
+    int NumSamples() const;
+    int GetSample(int i) const;
+    const std::vector<int>& GetSamples() const;
+
+    int FarthestVertex() const;
+    void AddSample(int NewSample);
+};
+
+
 
 } // namespace rmt

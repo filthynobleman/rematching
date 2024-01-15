@@ -46,7 +46,7 @@ typedef std::pair<double, std::vector<rmt::WEdge>> Path;
 class Graph
 {
 private:
-    std::vector<Eigen::Vector3d> m_Verts;
+    // std::vector<Eigen::Vector3d> m_Verts;
     std::vector<int> m_Idxs;
     std::vector<WEdge> m_Adjs;
 
@@ -64,23 +64,17 @@ public:
     int NumAdjacents(int i) const;
     int NumEdges() const;
 
-    const Eigen::Vector3d& GetVertex(int i) const;
-    const std::vector<Eigen::Vector3d>& GetVertices() const;
+    // const Eigen::Vector3d& GetVertex(int i) const;
+    // const std::vector<Eigen::Vector3d>& GetVertices() const;
 
     const WEdge& GetAdjacent(int node_i, int adj_i) const;
 
     rmt::Path DijkstraPath(int src, int dst) const;
+    Eigen::VectorXd DijkstraDistance(int src) const;
+    void DijkstraDistance(int src, Eigen::VectorXd& Distances) const;
     int FarthestFiltered(int src, const std::vector<int>& Tag, int Filter) const;
     int FarthestAtBoundary(int src, const std::vector<int>& Tag, int Region, int Neighbor) const;
     std::vector<int> ConnectedComponents() const;
 };
-
-
-rmt::Graph DualGraph(const Eigen::MatrixXd& V, 
-                     const Eigen::MatrixXi& F,
-                     Eigen::MatrixXi& uE,
-                     Eigen::MatrixXi& uDE,
-                     Eigen::VectorXi& e2de,
-                     Eigen::VectorXi& de2e);
 
 } // namespace rmt

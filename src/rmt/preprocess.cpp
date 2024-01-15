@@ -22,40 +22,6 @@ struct MyPairHash
     }
 };
 
-
-double TriArea(const Eigen::Vector3d& v0,
-               const Eigen::Vector3d& v1,
-               const Eigen::Vector3d& v2)
-{
-    // Cross product
-    // return 0.5 * (v2 - v0).cross(v1 - v0).norm();
-
-    // Averaged cross product
-    double A = 0.0;
-    static const double one_sixth = 1 / 6.0;
-    A += (v2 - v0).cross(v1 - v0).norm();
-    A += (v2 - v1).cross(v0 - v1).norm();
-    A += (v1 - v2).cross(v0 - v2).norm();
-    // return A / 6.0;
-    return A * one_sixth;
-
-    // Heron's formula
-    // double e01 = (v1 - v0).norm();
-    // double e12 = (v2 - v1).norm();
-    // double e20 = (v0 - v2).norm();
-    // double s = 0.5 * (e01 + e12 + e20);
-    // return std::sqrt(s * (s - e01) * (s - e12) * (s - e20));
-}
-
-double TriArea(const Eigen::MatrixX3d& V,
-               const Eigen::MatrixX3i& F,
-               int TriID)
-{
-    return TriArea(V.row(F(TriID, 0)).transpose(),
-                   V.row(F(TriID, 1)).transpose(), 
-                   V.row(F(TriID, 2)).transpose());
-}
-
 void rmt::RescaleInsideUnitBox(Eigen::MatrixXd& V)
 {
     int nVerts = V.rows();
@@ -70,8 +36,13 @@ double rmt::MaxEdgeLength(const Eigen::MatrixXd& V,
 {
     Eigen::VectorXd TriAreas;
     igl::doublearea(V, F, TriAreas);
-    double AvgArea = TriAreas.sum() / (6 * OutputSize);
-    return std::sqrt(2 * AvgArea / std::sqrt(3));
+    // We expect output mesh to have about F = 2 * V
+    // So, average triangle area is A / (2 * V)
+    // We consider an extra factor of two because we computed double areas
+    double AvgArea = TriAreas.sum() / (4 * OutputSize);
+    // We expect/aim to equilateral triangles, whose area is
+    // l^2 * sqrt(3) / 4. So edge length is 2 * sqrt(A / sqrt(3))
+    return 2 * std::sqrt(AvgArea / std::sqrt(3));
 }
 
 void rmt::ResampleMesh(Eigen::MatrixXd &V, 

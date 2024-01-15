@@ -47,7 +47,7 @@ std::tuple<int, int, int> rmt::SurfaceRegion::GetSamples() const { return m_Samp
 
 int rmt::SurfaceRegion::NumVertices() const { return m_NVerts; }
 int rmt::SurfaceRegion::NumFaces() const    { return m_NFaces; }
-int rmt::SurfaceRegion::NumEdges() const    { return m_NEdges >> 1; } // divide by two
+int rmt::SurfaceRegion::NumEdges() const    { return m_NEdges; }
 int rmt::SurfaceRegion::EulerCharacteristic() const
 {
     return NumVertices() + NumFaces() - NumEdges();
@@ -56,7 +56,8 @@ int rmt::SurfaceRegion::EulerCharacteristic() const
 void rmt::SurfaceRegion::AddFace()          { m_NFaces += 1; }
 void rmt::SurfaceRegion::AddVertex()        { m_NVerts += 1; }
 void rmt::SurfaceRegion::AddEdge()          { m_NEdges += 1; }
-void rmt::SurfaceRegion::AddBoundaryEdge()  { m_NEdges += 2; }
+void rmt::SurfaceRegion::AddBoundaryEdge()  { m_NEdges += 1; m_NVerts += 1; }
+void rmt::SurfaceRegion::AddBoundaryFace()  { m_NFaces += 1; m_NVerts += 1; m_NEdges += 2; }
 
 
 bool rmt::operator==(const rmt::SurfaceRegion& SR1, const rmt::SurfaceRegion& SR2)

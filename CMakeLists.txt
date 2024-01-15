@@ -29,7 +29,11 @@ find_package(Threads REQUIRED)
 # Include rematching library
 include_directories("${CMAKE_SOURCE_DIR}/include")
 add_library(RMT STATIC  "${CMAKE_SOURCE_DIR}/src/rmt/graph.cpp"
+                        "${CMAKE_SOURCE_DIR}/src/rmt/mesh.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/voronoifps.cpp"
+                        "${CMAKE_SOURCE_DIR}/src/rmt/region.cpp"
+                        "${CMAKE_SOURCE_DIR}/src/rmt/regiondict.cpp"
+                        "${CMAKE_SOURCE_DIR}/src/rmt/flatunion.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/reconstruction.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/preprocess.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/weightmap.cpp"
@@ -61,7 +65,7 @@ add_executable(Remesh "${CMAKE_SOURCE_DIR}/src/apps/remesh.cpp")
 target_link_libraries(Remesh RMT)
 set_target_properties(Remesh PROPERTIES CXX_STANDARD 17)
 
-# Remeshing batch
-add_executable(BatchRemesh "${CMAKE_SOURCE_DIR}/src/apps/batch.cpp")
-target_link_libraries(BatchRemesh RMT)
-set_target_properties(BatchRemesh PROPERTIES CXX_STANDARD 17)
+# # Remeshing batch
+# add_executable(BatchRemesh "${CMAKE_SOURCE_DIR}/src/apps/batch.cpp")
+# target_link_libraries(BatchRemesh RMT)
+# set_target_properties(BatchRemesh PROPERTIES CXX_STANDARD 17)

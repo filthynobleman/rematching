@@ -46,6 +46,7 @@ public:
     int EulerCharacteristic() const;
 
     void AddFace();
+    void AddBoundaryFace();
     void AddEdge();
     void AddBoundaryEdge();
     void AddVertex();
@@ -73,33 +74,37 @@ private:
     std::vector<rmt::SurfaceRegion> m_Regions;
 
     // Map samples into regions containing them
-    std::vector<std::vector<rmt::SurfaceRegion&>> m_VMap;
+    std::vector<std::vector<rmt::SurfaceRegion*>> m_VMap;
 
     // Map couples of samples into region containing both
     std::unordered_map<std::pair<int, int>, 
-                       std::vector<rmt::SurfaceRegion&>,
+                       std::vector<rmt::SurfaceRegion*>,
                        rmt::PairHash<int>> m_EMap;
 
     // Map triples of samples into their union region
     std::unordered_map<std::tuple<int, int, int>,
-                       rmt::SurfaceRegion&,
+                       rmt::SurfaceRegion*,
                        rmt::TripleHash<int>> m_TMap;
 
 public:
+    RegionDictionary();
     RegionDictionary(size_t NumSamples);
     ~RegionDictionary();
 
     void Clear();
+    void Clear(size_t NumSamples);
     void AddRegion(int pi, int pj, int pk);
 
     bool HasRegion(int pi, int pj, int pk) const;
 
     void AddVertex(int pi);
+    void AddBoundaryVertex(int pi);
     void AddEdge(int pi, int pj);
     void AddBoundaryEdge(int pi, int pj);
     void AddTriangle(int pi, int pj, int pk);
 
 
+    size_t NumRegions() const;
     const rmt::SurfaceRegion& GetRegion(size_t i) const;
     bool IsClosed2Ball(size_t i) const;
 

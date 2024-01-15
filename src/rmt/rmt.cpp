@@ -18,8 +18,17 @@ void rmt::Remesh(const Eigen::MatrixXd & Vin,
                  Eigen::MatrixXd & Vout, 
                  Eigen::MatrixXi & Fout)
 {
-    rmt::Graph Graph(Vin, Fin);
-    auto VFPS = rmt::VoronoiFPS(Graph, NSamples);
-    rmt::MeshFromVoronoi(Vin, Fin, VFPS, Vout, Fout);
-    rmt::ReorientFaces(VFPS.Samples, Vin, Fin, Vout, Fout);
+    rmt::Mesh M(Vin, Fin);
+    M.ComputeEdgesAndBoundaries();
+    rmt::VoronoiPartitioning VPart(M);
+    while (VPart.NumSamples() < NSamples)
+        VPart.AddSample(VPart.FarthestVertex());
+    rmt::FlatUnion FU(M, VPart);
+    do
+    {
+        FU.DetermineRegions();
+        FU.ComputeTopologies();
+    } while (!FU.FixIssues());
+    
+    rmt::MeshFromVoronoi(Vin, Fin, VPart, Vout, Fout);
 }

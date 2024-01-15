@@ -12,8 +12,10 @@
 #pragma once
 
 #include <rmt/graph.hpp>
+#include <rmt/mesh.hpp>
 #include <rmt/preprocess.hpp>
 #include <rmt/voronoifps.hpp>
+#include <rmt/flatunion.hpp>
 #include <rmt/reconstruction.hpp>
 #include <rmt/weightmap.hpp>
 #include <rmt/eval.hpp>
