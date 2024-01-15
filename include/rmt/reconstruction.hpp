@@ -18,11 +18,6 @@
 
 namespace rmt
 {
-    
-void MeshFromVoronoi(const Graph& G,
-                     rmt::VoronoiPartitioning& Parts,
-                     Eigen::MatrixXd& V,
-                     Eigen::MatrixXi& F);
 
 void MeshFromVoronoi(const Eigen::MatrixXd& VOld,
                      const Eigen::MatrixXi& FOld,

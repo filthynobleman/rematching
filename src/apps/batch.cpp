@@ -51,11 +51,12 @@ struct rmtArgs
 
 struct RMTime
 {
-    double ResampleTime;
-    double GraphTime;
-    double VoronoiFPSTime;
-    double ReconstructionTime;
-    double WMapTime;
+    double Resampling;
+    double Boundary;
+    double VoronoiFPS;
+    double FlatUnion;
+    double Reconstruction;
+    double WMap;
     double Total;
 };
 
@@ -150,44 +151,55 @@ int main(int argc, const char* const argv[])
         for (int j = 0; j < nReps; ++j)
         {
             int RunIdx = i * nReps + j;
-            Eigen::MatrixXd V = Vp;
-            Eigen::MatrixXi F = Fp;
+            rmt::Mesh Mesh(Vp, Fp);
 
             int NSamples = Args.NumSamples[j];
             if (!Args.FixedSize)
-                NSamples = Args.Resolution[j] * V.rows();
+                NSamples = Args.Resolution[j] * Mesh.NumVertices();
 
             std::cout << "Remeshing " << Args.InMeshes[i] << " to " << NSamples << " vertices... " << std::endl;
 
-            int nVertsOrig = V.rows();
-            auto FOrig = F;
+            int nVertsOrig = Mesh.NumVertices();
             if (Args.Resampling)
             {
                 StartTimer();
-                double MEL = rmt::MaxEdgeLength(V, F, NSamples);
-                rmt::ResampleMesh(V, F, MEL);
-                Times[RunIdx].ResampleTime = StopTimer();
+                Mesh.Resample(NSamples);
+                Times[RunIdx].Resampling = StopTimer();
             }
 
             StartTimer();
-            rmt::Graph Graph(V, F);
-            Times[RunIdx].GraphTime = StopTimer();
+            Mesh.ComputeEdgesAndBoundaries();
+            Times[RunIdx].Boundary = StopTimer();
 
-            Stats[RunIdx] = { (int)(V.rows()), Graph.NumEdges(), (int)(F.rows()), NSamples };
+            Stats[RunIdx] = { Mesh.NumVertices(), Mesh.NumEdges(), Mesh.NumTriangles(), NSamples };
 
             StartTimer();
-            auto VFPS = rmt::VoronoiFPS(Graph, NSamples);
-            Times[RunIdx].VoronoiFPSTime = StopTimer();
+            rmt::VoronoiPartitioning VPart(Mesh);
+            while (VPart.NumSamples() < NSamples)
+                VPart.AddSample(VPart.FarthestVertex());
+            Times[RunIdx].VoronoiFPS = StopTimer();
+
+            StartTimer();
+            rmt::FlatUnion FU(Mesh, VPart);
+            do
+            {
+                FU.DetermineRegions();
+                FU.ComputeTopologies();
+            } while (!FU.FixIssues());
+            Times[RunIdx].FlatUnion = StopTimer();
+            
 
             StartTimer();
             Eigen::MatrixXd VV;
             Eigen::MatrixXi FF;
-            rmt::MeshFromVoronoi(V, F, VFPS, VV, FF);
-            rmt::ReorientFaces(VFPS.Samples, V, F, VV, FF);
-            // rmt::ReorientFaces(VFPS.Samples, V, F, VV, FF);
-            Times[RunIdx].ReconstructionTime = StopTimer();
+            rmt::MeshFromVoronoi(Mesh.GetVertices(), Mesh.GetTriangles(), VPart, VV, FF);
+            Times[RunIdx].Reconstruction = StopTimer();
 
-            Times[RunIdx].Total = Times[RunIdx].GraphTime + Times[RunIdx].ReconstructionTime + Times[RunIdx].ResampleTime + Times[RunIdx].VoronoiFPSTime;
+            Times[RunIdx].Total = Times[RunIdx].Boundary + 
+                                  Times[RunIdx].VoronoiFPS +
+                                  Times[RunIdx].FlatUnion + 
+                                  Times[RunIdx].Reconstruction + 
+                                  Times[RunIdx].Resampling;
             std::cout << "\tElapsed time is " << Times[RunIdx].Total << " seconds." << std::endl;
 
             if (FF.rows() == 0)
@@ -205,8 +217,8 @@ int main(int argc, const char* const argv[])
 
             std::string OutWMap = OutputName(Args, j, Args.WMaps[i]);
             StartTimer();
-            auto W = rmt::WeightMap(V, VV, FF, nVertsOrig);
-            Times[RunIdx].WMapTime = StopTimer();
+            auto W = rmt::WeightMap(Mesh.GetVertices(), VV, FF, nVertsOrig);
+            Times[RunIdx].WMap = StopTimer();
             if (!rmt::ExportWeightmap(OutWMap, W))
                 std::cerr << "\tCannot save the weightmap to " << OutWMap;
             else
@@ -214,9 +226,9 @@ int main(int argc, const char* const argv[])
 
             if (Args.Evaluate)
             {
-                rmt::RescaleInsideUnitBox(V);
+                Mesh.RescaleInsideUnitBox();
                 rmt::RescaleInsideUnitBox(VV);
-                Metrics[RunIdx] = rmt::Evaluate(V, FOrig, VV, FF, nVertsOrig);
+                Metrics[RunIdx] = rmt::Evaluate(Mesh.GetVertices(), Fp, VV, FF, nVertsOrig);
             }
         }
     }
@@ -233,8 +245,8 @@ int main(int argc, const char* const argv[])
 
     // Write header
     Out << "Mesh,";
-    Out << "NVerts,NEdges,NTris,OutResolution,";
-    Out << "Time,Resample,Graph,VoronoiFPS,Reconstruct,WMap";
+    Out << "NVerts,NEdges,NTris,OutResolution,Success,";
+    Out << "Time,Resample,Boundary,VoronoiFPS,FlatUnion,Reconstruct,WMap";
     if (Args.Evaluate)
     {
         Out << ",Hausdorff,Chamfer,";
@@ -253,12 +265,14 @@ int main(int argc, const char* const argv[])
 
             Out << MName << ',';
             Out << Stats[RunIdx].NVerts << ',' << Stats[RunIdx].NEdges << ',' << Stats[RunIdx].NTris << ',' << Stats[RunIdx].RMSize << ',';
+            Out << !Failures[RunIdx] << ',';
             Out << Times[RunIdx].Total << ',';
-            Out << Times[RunIdx].ResampleTime << ',';
-            Out << Times[RunIdx].GraphTime << ',';
-            Out << Times[RunIdx].VoronoiFPSTime << ',';
-            Out << Times[RunIdx].ReconstructionTime << ',';
-            Out << Times[RunIdx].WMapTime;
+            Out << Times[RunIdx].Resampling << ',';
+            Out << Times[RunIdx].Boundary << ',';
+            Out << Times[RunIdx].VoronoiFPS << ',';
+            Out << Times[RunIdx].FlatUnion << ',';
+            Out << Times[RunIdx].Reconstruction << ',';
+            Out << Times[RunIdx].WMap;
             if (Args.Evaluate)
             {
                 Out << ',';

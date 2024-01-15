@@ -65,7 +65,7 @@ add_executable(Remesh "${CMAKE_SOURCE_DIR}/src/apps/remesh.cpp")
 target_link_libraries(Remesh RMT)
 set_target_properties(Remesh PROPERTIES CXX_STANDARD 17)
 
-# # Remeshing batch
-# add_executable(BatchRemesh "${CMAKE_SOURCE_DIR}/src/apps/batch.cpp")
-# target_link_libraries(BatchRemesh RMT)
-# set_target_properties(BatchRemesh PROPERTIES CXX_STANDARD 17)
+# Remeshing batch
+add_executable(BatchRemesh "${CMAKE_SOURCE_DIR}/src/apps/batch.cpp")
+target_link_libraries(BatchRemesh RMT)
+set_target_properties(BatchRemesh PROPERTIES CXX_STANDARD 17)

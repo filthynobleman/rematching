@@ -13,6 +13,7 @@
 #include <rmt/io.hpp>
 #include <rmt/preprocess.hpp>
 #include <cut/cut.hpp>
+#include <cassert>
 #define NOMINMAX
 #include <igl/unique_edge_map.h>
 #include <igl/barycenter.h>

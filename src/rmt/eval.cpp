@@ -9,6 +9,7 @@
  * 
  * @date        2023-07-27
  */
+#define NOMINMAX
 #include <rmt/eval.hpp>
 #include <assert.h>
 #include <igl/hausdorff.h>
