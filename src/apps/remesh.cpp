@@ -94,23 +94,21 @@ int main(int argc, const char* const argv[])
     std::cout << "Refining sampling to ensure closed ball property... ";
     StartTimer();
     rmt::FlatUnion FU(Mesh, VPart);
-    // for (int i = 0; i < 3; ++i)
-    // {
-    //     std::ofstream Stream;
-    //     Stream.open("partitioning-" + std::to_string(i) + ".txt", std::ios::out);
-    //     for (int j = 0; j < Mesh.NumVertices(); ++j)
-    //         Stream << VPart.GetPartition(j) << '\n';
-    //     Stream.close();
-
-    //     FU.DetermineRegions();
-    //     FU.ComputeTopologies();
-    //     FU.FixIssues();
-    // }
+    try
+    {
     do
     {
         FU.DetermineRegions();
         FU.ComputeTopologies();
     } while (!FU.FixIssues());
+        /* code */
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return -1;
+    }
+    
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;

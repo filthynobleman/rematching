@@ -12,6 +12,9 @@
 #include <rmt/region.hpp>
 
 
+rmt::SurfaceRegion::SurfaceRegion(int pi) : rmt::SurfaceRegion(pi, std::numeric_limits<int>::max() - 1) { }
+rmt::SurfaceRegion::SurfaceRegion(int pi, int pj) : rmt::SurfaceRegion(pi, pj, std::numeric_limits<int>::max()) { }
+
 rmt::SurfaceRegion::SurfaceRegion(int pi, int pj, int pk)
 {
     m_NVerts = 0;

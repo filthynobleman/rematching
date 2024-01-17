@@ -11,18 +11,13 @@
  */
 #include <rmt/region.hpp>
 #include <cut/cut.hpp>
-
+#include <iostream>
 
 rmt::RegionDictionary::RegionDictionary() { }
 
 rmt::RegionDictionary::RegionDictionary(size_t NumSamples)
 {
-    m_Regions.reserve(3 * NumSamples);
-    m_VMap.resize(NumSamples);
-    for (auto& RegList : m_VMap)
-        RegList.reserve(6);
-    m_EMap.reserve(3 * NumSamples);
-    m_TMap.reserve(3 * NumSamples);
+    Clear(NumSamples);
 }
 
 
@@ -47,6 +42,8 @@ void rmt::RegionDictionary::Clear(size_t NumSamples)
     for (auto& RegList : m_VMap)
         RegList.reserve(6);
     m_EMap.reserve(3 * NumSamples);
+    for (auto& RegList : m_EMap)
+        RegList.second.reserve(6);
     m_TMap.reserve(3 * NumSamples);
 }
 
@@ -84,18 +81,50 @@ void rmt::RegionDictionary::AddRegion(int pi, int pj, int pk)
 
 
     m_Regions.emplace_back(pi, pj, pk);
-    auto Reg = &m_Regions[m_Regions.size() - 1];
+    auto& Reg = m_Regions[m_Regions.size() - 1];
 
-    m_VMap[pi].emplace_back(Reg);
-    m_VMap[pj].emplace_back(Reg);
-    m_VMap[pk].emplace_back(Reg);
+    m_VMap[pi].emplace_back(m_Regions.size() - 1);
+    m_VMap[pj].emplace_back(m_Regions.size() - 1);
+    m_VMap[pk].emplace_back(m_Regions.size() - 1);
 
-    m_EMap[{ pi, pj }].emplace_back(Reg);
-    m_EMap[{ pj, pk }].emplace_back(Reg);
-    m_EMap[{ pi, pk }].emplace_back(Reg);
+    m_EMap[{ pi, pj }].emplace_back(m_Regions.size() - 1);
+    m_EMap[{ pj, pk }].emplace_back(m_Regions.size() - 1);
+    m_EMap[{ pi, pk }].emplace_back(m_Regions.size() - 1);
 
-    std::tuple<int, int, int> T{pi, pj, pk};
-    m_TMap.emplace(T, Reg);
+    m_TMap.emplace(Reg.GetSamples(), m_Regions.size() - 1);
+}
+
+void rmt::RegionDictionary::AddRegion(int pi, int pj)
+{
+    if (pi == pj)
+        return;
+
+    OrderIndices(pi, pj);
+    if (HasRegion(pi, pj))
+        return;
+
+    m_Regions.emplace_back(pi, pj);
+    auto& Reg = m_Regions[m_Regions.size() - 1];
+
+    m_VMap[pi].emplace_back(m_Regions.size() - 1);
+    m_VMap[pj].emplace_back(m_Regions.size() - 1);
+
+    m_EMap[{ pi, pj }].emplace_back(m_Regions.size() - 1);
+
+    m_TMap.emplace(Reg.GetSamples(), m_Regions.size() - 1);
+}
+
+void rmt::RegionDictionary::AddRegion(int pi)
+{
+    if (HasRegion(pi))
+        return;
+
+    m_Regions.emplace_back(pi);
+    auto& Reg = m_Regions[m_Regions.size() - 1];
+    
+    m_VMap[pi].emplace_back(m_Regions.size() - 1);
+    
+    m_TMap.emplace(Reg.GetSamples(), m_Regions.size() - 1);
 }
 
 bool rmt::RegionDictionary::HasRegion(int pi, int pj, int pk) const
@@ -104,20 +133,34 @@ bool rmt::RegionDictionary::HasRegion(int pi, int pj, int pk) const
     return m_TMap.find({ pi, pj, pk }) != m_TMap.end();
 }
 
+bool rmt::RegionDictionary::HasRegion(int pi, int pj) const
+{
+    return HasRegion(pi, pj, std::numeric_limits<int>::max());
+}
+
+bool rmt::RegionDictionary::HasRegion(int pi) const
+{
+    return HasRegion(pi, std::numeric_limits<int>::max() - 1);
+}
+
 
 
 void rmt::RegionDictionary::AddVertex(int pi)
 {
     // Adding a primal vertex means adding a face
-    for (auto& Reg : m_VMap[pi])
-        Reg->AddFace();
+    if (pi >= m_VMap.size())
+        std::cerr << "WTF " << pi << std::endl;
+    for (int RID : m_VMap[pi])
+        m_Regions[RID].AddFace();
 }
 
 void rmt::RegionDictionary::AddBoundaryVertex(int pi)
 {
     // Adding a primal vertex means adding a face
-    for (auto& Reg : m_VMap[pi])
-        Reg->AddBoundaryFace();
+    if (pi >= m_VMap.size())
+        std::cerr << "WTF " << pi << std::endl;
+    for (int RID : m_VMap[pi])
+        m_Regions[RID].AddBoundaryFace();
 }
 
 void rmt::RegionDictionary::AddEdge(int pi, int pj)
@@ -126,18 +169,18 @@ void rmt::RegionDictionary::AddEdge(int pi, int pj)
     // If they are the same sample, we add an edge to all the regions that contain that sample
     if (pi == pj)
     {
-        for (auto& Reg : m_VMap[pi])
-            Reg->AddEdge();
+        for (int RID : m_VMap[pi])
+            m_Regions[RID].AddEdge();
         return;
     }
 
     // Otherwise add an edge to the regions that contain at leas one of the samples
-    std::vector<rmt::SurfaceRegion*> Pij = m_VMap[pi];
+    std::vector<int> Pij = m_VMap[pi];
     Pij.insert(Pij.end(), m_VMap[pj].begin(), m_VMap[pj].end());
     std::sort(Pij.begin(), Pij.end());
     auto PijEnd = std::unique(Pij.begin(), Pij.end());
     for (auto it = Pij.begin(); it != PijEnd; ++it)
-        (*it)->AddEdge();
+        m_Regions[*it].AddEdge();
 }
 
 void rmt::RegionDictionary::AddBoundaryEdge(int pi, int pj)
@@ -146,18 +189,18 @@ void rmt::RegionDictionary::AddBoundaryEdge(int pi, int pj)
     // If they are the same sample, we add an edge to all the regions that contain that sample
     if (pi == pj)
     {
-        for (auto& Reg : m_VMap[pi])
-            Reg->AddBoundaryEdge();
+        for (int RID : m_VMap[pi])
+            m_Regions[RID].AddBoundaryEdge();
         return;
     }
 
     // Otherwise add an edge to the regions that contain at leas one of the samples
-    std::vector<rmt::SurfaceRegion*> Pij = m_VMap[pi];
+    std::vector<int> Pij = m_VMap[pi];
     Pij.insert(Pij.end(), m_VMap[pj].begin(), m_VMap[pj].end());
     std::sort(Pij.begin(), Pij.end());
     auto PijEnd = std::unique(Pij.begin(), Pij.end());
     for (auto it = Pij.begin(); it != PijEnd; ++it)
-        (*it)->AddBoundaryEdge();
+        m_Regions[*it].AddBoundaryEdge();
 }
 
 void rmt::RegionDictionary::AddTriangle(int pi, int pj, int pk)
@@ -167,8 +210,8 @@ void rmt::RegionDictionary::AddTriangle(int pi, int pj, int pk)
     // the regions containing that partition
     if (pi == pj && pj == pk)
     {
-        for (auto& Reg : m_VMap[pi])
-            Reg->AddVertex();
+        for (int RID : m_VMap[pi])
+            m_Regions[RID].AddVertex();
         return;
     }
 
@@ -178,24 +221,24 @@ void rmt::RegionDictionary::AddTriangle(int pi, int pj, int pk)
     // the regions containing at least one between that partition and the other
     if (pi == pj || pj == pk)
     {
-        std::vector<rmt::SurfaceRegion*> Pik = m_VMap[pi];
+        std::vector<int> Pik = m_VMap[pi];
         Pik.insert(Pik.end(), m_VMap[pk].begin(), m_VMap[pk].end());
         std::sort(Pik.begin(), Pik.end());
         auto PikEnd = std::unique(Pik.begin(), Pik.end());
         for (auto it = Pik.begin(); it != PikEnd; ++it)
-            (*it)->AddVertex();
+            m_Regions[*it].AddVertex();
         return;
     }
 
     // If all vertices belongs to different partitions, we add a vertex to all
     // the regions containing at least one of those partitions
-    std::vector<rmt::SurfaceRegion*> Pijk = m_VMap[pi];
+    std::vector<int> Pijk = m_VMap[pi];
     Pijk.insert(Pijk.end(), m_VMap[pj].begin(), m_VMap[pj].end());
     Pijk.insert(Pijk.end(), m_VMap[pk].begin(), m_VMap[pk].end());
     std::sort(Pijk.begin(), Pijk.end());
     auto PijkEnd = std::unique(Pijk.begin(), Pijk.end());
     for (auto it = Pijk.begin(); it != PijkEnd; ++it)
-        (*it)->AddVertex();
+        m_Regions[*it].AddVertex();
 }
 
 

@@ -34,6 +34,8 @@ private:
     std::tuple<int, int, int> m_Samples;
 
 public:
+    SurfaceRegion(int pi);
+    SurfaceRegion(int pi, int pj);
     SurfaceRegion(int pi, int pj, int pk);
     SurfaceRegion(const rmt::SurfaceRegion& SR);
     rmt::SurfaceRegion& operator=(const rmt::SurfaceRegion& SR);
@@ -74,16 +76,16 @@ private:
     std::vector<rmt::SurfaceRegion> m_Regions;
 
     // Map samples into regions containing them
-    std::vector<std::vector<rmt::SurfaceRegion*>> m_VMap;
+    std::vector<std::vector<int>> m_VMap;
 
     // Map couples of samples into region containing both
     std::unordered_map<std::pair<int, int>, 
-                       std::vector<rmt::SurfaceRegion*>,
+                       std::vector<int>,
                        rmt::PairHash<int>> m_EMap;
 
     // Map triples of samples into their union region
     std::unordered_map<std::tuple<int, int, int>,
-                       rmt::SurfaceRegion*,
+                       int,
                        rmt::TripleHash<int>> m_TMap;
 
 public:
@@ -93,8 +95,12 @@ public:
 
     void Clear();
     void Clear(size_t NumSamples);
+    void AddRegion(int pi);
+    void AddRegion(int pi, int pj);
     void AddRegion(int pi, int pj, int pk);
 
+    bool HasRegion(int pi) const;
+    bool HasRegion(int pi, int pj) const;
     bool HasRegion(int pi, int pj, int pk) const;
 
     void AddVertex(int pi);

@@ -31,9 +31,11 @@ private:
                        std::vector<int>,
                        rmt::TripleHash<int>> m_Midpoints;
 
-    std::vector<std::set<int>> m_Neighs;
-    std::vector<std::tuple<int, int, int>> m_Farthests;
-    std::vector<std::tuple<double, double, double>> m_FarDists;
+    std::unordered_map<std::pair<int, int>,
+                       std::pair<int, double>,
+                       rmt::PairHash<int>> m_BoundBreak;
+
+    std::vector<std::pair<int, double>> m_Farthests;
 
 public:
     FlatUnion(const rmt::Mesh& M,

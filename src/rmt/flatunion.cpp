@@ -23,18 +23,18 @@ void rmt::FlatUnion::DetermineRegions()
     int NSamples = m_VPart.NumSamples();
     m_Midpoints.clear();
     m_Midpoints.reserve(3 * NSamples);
+    m_BoundBreak.clear();
+    m_BoundBreak.reserve(3 * NSamples);
     m_RDict.Clear(NSamples);
 
-    m_Neighs.resize(NSamples);
+    // Add a region for each sample point
+    for (int i = 0; i < NSamples; ++i)
+        m_RDict.AddRegion(i);
+
     m_Farthests.clear();
     m_Farthests.resize(NSamples);
-    m_FarDists.clear();
-    m_FarDists.resize(NSamples);
     for (int i = 0; i < NSamples; ++i)
-    {
-        m_Farthests[i] = { m_VPart.GetSample(i), m_VPart.GetSample(i), m_VPart.GetSample(i) };
-        m_FarDists[i] = { 0.0, 0.0, 0.0 };
-    }
+        m_Farthests[i] = { m_VPart.GetSample(i), 0.0 };
 
     int NFaces = m_Mesh.NumTriangles();
     const Eigen::MatrixXi& F = m_Mesh.GetTriangles();
@@ -47,51 +47,63 @@ void rmt::FlatUnion::DetermineRegions()
         {
             int v = F(i, j);
             int p = P[v];
-            if (D[v] > std::get<0>(m_FarDists[p]))
-            {
-                std::get<2>(m_Farthests[p]) = std::get<1>(m_Farthests[p]);
-                std::get<2>(m_FarDists[p]) = std::get<1>(m_FarDists[p]);
-                std::get<1>(m_Farthests[p]) = std::get<0>(m_Farthests[p]);
-                std::get<1>(m_FarDists[p]) = std::get<0>(m_FarDists[p]);
-                std::get<0>(m_FarDists[p]) = D[v];
-                std::get<0>(m_Farthests[p]) = v;
-                continue;
-            }
-            if (D[v] > std::get<1>(m_FarDists[p]))
-            {
-                std::get<2>(m_Farthests[p]) = std::get<1>(m_Farthests[p]);
-                std::get<2>(m_FarDists[p]) = std::get<1>(m_FarDists[p]);
-                std::get<1>(m_FarDists[p]) = D[v];
-                std::get<1>(m_Farthests[p]) = v;
-                continue;
-            }
-            if (D[v] > std::get<2>(m_FarDists[p]))
-            {
-                std::get<2>(m_FarDists[p]) = D[v];
-                std::get<2>(m_Farthests[p]) = v;
-                continue;
-            }
+            if (D[v] > m_Farthests[p].second)
+                m_Farthests[p] = { v, D[v] };
         }
 
         int p0 = P[F(i, 0)];
         int p1 = P[F(i, 1)];
         int p2 = P[F(i, 2)];
 
-        // If triangle crosses two regions, add the edge
+        // If triangle crosses two regions, add the union region 
+        // and update the eventual breakpoint
         if (p0 != p1)
         {
-            m_Neighs[p0].insert(p1);
-            m_Neighs[p1].insert(p0);
+            std::pair<int, int> p01{p0, p1};
+            if (p1 < p0)
+                std::swap(p01.first, p01.second);
+            std::pair<int, double> v01{F(i, 0), D[F(i, 0)]};
+            if (D[F(i, 1)] > v01.second)
+                v01 = { F(i, 1), D[F(i, 1)] };
+            if (m_BoundBreak.find(p01) == m_BoundBreak.end())
+            {
+                m_RDict.AddRegion(p0, p1);
+                m_BoundBreak.emplace(p01, v01);
+            }
+            if (v01.second > m_BoundBreak[p01].second)
+                m_BoundBreak[p01] = v01;
         }
         if (p1 != p2)
         {
-            m_Neighs[p1].insert(p2);
-            m_Neighs[p2].insert(p1);
+            std::pair<int, int> p12{p1, p2};
+            if (p2 < p1)
+                std::swap(p12.first, p12.second);
+            std::pair<int, double> v12{F(i, 1), D[F(i, 1)]};
+            if (D[F(i, 2)] > v12.second)
+                v12 = { F(i, 2), D[F(i, 2)] };
+            if (m_BoundBreak.find(p12) == m_BoundBreak.end())
+            {
+                m_RDict.AddRegion(p1, p2);
+                m_BoundBreak.emplace(p12, v12);
+            }
+            if (v12.second > m_BoundBreak[p12].second)
+                m_BoundBreak[p12] = v12;
         }
         if (p2 != p0)
         {
-            m_Neighs[p2].insert(p0);
-            m_Neighs[p0].insert(p2);
+            std::pair<int, int> p20{p2, p0};
+            if (p0 < p2)
+                std::swap(p20.first, p20.second);
+            std::pair<int, double> v20{F(i, 2), D[F(i, 2)]};
+            if (D[F(i, 0)] > v20.second)
+                v20 = { F(i, 0), D[F(i, 0)] };
+            if (m_BoundBreak.find(p20) == m_BoundBreak.end())
+            {
+                m_RDict.AddRegion(p2, p0);
+                m_BoundBreak.emplace(p20, v20);
+            }
+            if (v20.second > m_BoundBreak[p20].second)
+                m_BoundBreak[p20] = v20;
         }
 
         // If triangle not crossing three regions, skip
@@ -136,14 +148,18 @@ void rmt::FlatUnion::DetermineRegions()
 
 
 
+
 void rmt::FlatUnion::ComputeTopologies()
 {
     const Eigen::VectorXi& P = m_VPart.GetPartitions();
+
 
     int NVerts = m_Mesh.NumVertices();
     const Eigen::VectorXi& BV = m_Mesh.GetBoundaryVertices();
     for (int i = 0; i < NVerts; ++i)
     {
+        CUTAssert(P[i] < m_VPart.NumSamples());
+        CUTAssert(P[i] >= 0);
         if (BV[i])
             m_RDict.AddBoundaryVertex(P[i]);
         else
@@ -172,29 +188,38 @@ bool rmt::FlatUnion::FixIssues()
 {
     std::set<int> NewSamples;
 
-    // For each sample with less than three adjacents, add samples to the boundary
-    // until three adjacents are reached
-    int NSamples = m_VPart.NumSamples();
-    for (int i = 0; i < NSamples; ++i)
-    {
-        if (m_Neighs[i].size() >= 3)
-            continue;
-        if (std::get<0>(m_Farthests[i]) != m_VPart.GetSample(i))
-            NewSamples.insert(std::get<0>(m_Farthests[i]));
-        if (m_Neighs[i].size() < 2 && std::get<1>(m_Farthests[i]) != m_VPart.GetSample(i))
-            NewSamples.insert(std::get<1>(m_Farthests[i]));
-        if (m_Neighs[i].size() < 1 && std::get<2>(m_Farthests[i]) != m_VPart.GetSample(i))
-            NewSamples.insert(std::get<2>(m_Farthests[i]));
-    }
-
-
-    // For each region that is not a closed 2-ball, break the connection
+    // For each region that is not a closed 2-ball, fix it
     size_t NRegions = m_RDict.NumRegions();
     for (size_t i = 0; i < NRegions; ++i)
     {
         if (m_RDict.IsClosed2Ball(i))
             continue;
+
+        // Get the samples
         std::tuple<int, int, int> T = m_RDict.GetRegion(i).GetSamples();
+        
+        // If is a Voronoi texel, add a sample from its boundary
+        if (std::get<1>(T) >= m_VPart.NumSamples())
+        {
+            int p = std::get<0>(T);
+            NewSamples.insert(m_Farthests[p].first);
+            continue;
+        }
+        // If is a union of two texels, add a point at the boundary
+        if (std::get<2>(T) >= m_VPart.NumSamples())
+        {
+            int p0 = std::get<0>(T);
+            int p1 = std::get<1>(T);
+            int v = m_BoundBreak[{ p0, p1 }].first;
+            // A sample cannot insert itself
+            if (m_VPart.GetSample(p0) == v)
+                continue;
+            if (m_VPart.GetSample(p1) == v)
+                continue;
+            NewSamples.insert(v);
+            continue;
+        }
+        // If is a union of three texels, add all the midpoints
         NewSamples.insert(m_Midpoints[T].begin(), m_Midpoints[T].end());
     }
 
