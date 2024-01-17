@@ -12,6 +12,7 @@
 #include <rmt/mesh.hpp>
 #include <rmt/io.hpp>
 #include <rmt/preprocess.hpp>
+#include <rmt/utils.hpp>
 #include <cut/cut.hpp>
 #include <cassert>
 #define NOMINMAX
@@ -100,21 +101,40 @@ const Eigen::VectorXi& rmt::Mesh::GetBoundaryVertices() const
 
 void rmt::Mesh::ComputeEdgesAndBoundaries()
 {
-    // Compute all the unique edges and the number of occurrences of each edge
-    Eigen::MatrixXi AllE;
-    Eigen::VectorXi EMap, uEC, uEE;
-    igl::unique_edge_map(m_F, AllE, m_E, EMap, uEC, uEE);
-
-    // Boundary edges are edges which occur only once
-    m_BE = uEC(Eigen::seq(1, uEC.rows() - 1)) - uEC(Eigen::seq(0, uEC.rows() - 2));
-    m_BV.setZero(NumVertices());
-    for (int i = 0; i < m_BE.rows(); ++i)
+    // Compute all the edges and their number
+    std::unordered_map<std::pair<int, int>, std::pair<int, int>, rmt::PairHash<int>> m_Ecount;
+    m_Ecount.reserve(2 * NumTriangles());
+    for (int i = 0; i < m_F.rows(); ++i)
     {
-        m_BE[i] = m_BE[i] == 1 ? 1 : 0;
-        if (m_BE[i])
+        for (int j = 0; j < 3; ++j)
         {
-            m_BV[m_E(i, 0)] = 1;
-            m_BV[m_E(i, 1)] = 1;
+            int j1 = j + 1;
+            if (j1 > 2)
+                j1 = 0;
+            std::pair<int, int> e{m_F(i, j), m_F(i, j1)};
+            if (e.first > e.second)
+                std::swap(e.first, e.second);
+            if (m_Ecount.find(e) == m_Ecount.end())
+            {
+                std::pair<int, int> cnt{m_Ecount.size(), 0};
+                m_Ecount.emplace(e, cnt);
+            }
+            m_Ecount[e].second += 1;
+        }
+    }
+
+    m_E.resize(m_Ecount.size(), 2);
+    m_BE.setZero(m_Ecount.size());
+    m_BV.setZero(NumVertices());
+    for (auto ec : m_Ecount)
+    {
+        m_E(ec.second.first, 0) = ec.first.first;
+        m_E(ec.second.first, 1) = ec.first.second;
+        if (ec.second.second == 1)
+        {
+            m_BE[ec.second.first] = 1;
+            m_BV[m_E(ec.second.first, 0)] = 1;
+            m_BV[m_E(ec.second.first, 1)] = 1;
         }
     }
 }

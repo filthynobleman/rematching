@@ -144,6 +144,8 @@ void rmt::FlatUnion::DetermineRegions()
         // Add the region
         m_RDict.AddRegion(p0, p1, p2);
     }
+
+    m_RDict.BuildRegionMaps();
 }
 
 
@@ -160,10 +162,11 @@ void rmt::FlatUnion::ComputeTopologies()
     {
         CUTAssert(P[i] < m_VPart.NumSamples());
         CUTAssert(P[i] >= 0);
-        if (BV[i])
-            m_RDict.AddBoundaryVertex(P[i]);
-        else
+        if (!BV[i])
             m_RDict.AddVertex(P[i]);
+        // Boundary vertices do not contribute to topological changes
+        // else
+        //     m_RDict.AddBoundaryVertex(P[i]);
     }
 
     const Eigen::MatrixXi& E = m_Mesh.GetEdges();
@@ -171,10 +174,11 @@ void rmt::FlatUnion::ComputeTopologies()
     int NEdges = E.rows();
     for (int i = 0; i < NEdges; ++i)
     {
-        if (BE[i])
-            m_RDict.AddBoundaryEdge(P[E(i, 0)], P[E(i, 1)]);
-        else
+        if (!BE[i])
             m_RDict.AddEdge(P[E(i, 0)], P[E(i, 1)]);
+        // Boundary edges do not contribute to topological changes
+        // else
+        //     m_RDict.AddBoundaryEdge(P[E(i, 0)], P[E(i, 1)]);
     }
 
     const Eigen::MatrixXi& F = m_Mesh.GetTriangles();
