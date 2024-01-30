@@ -12,6 +12,7 @@
 #include <rmt/clean.hpp>
 #include <rmt/utils.hpp>
 
+#include <unordered_map>
 #include <set>
 #include <queue>
 

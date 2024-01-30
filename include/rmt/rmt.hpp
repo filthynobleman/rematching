@@ -22,6 +22,8 @@
 #include <rmt/io.hpp>
 #include <rmt/clean.hpp>
 
+#include <cassert>
+
 
 namespace rmt
 {
