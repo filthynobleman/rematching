@@ -18,9 +18,13 @@
 #include <igl/per_vertex_normals.h>
 #include <igl/boundary_loop.h>
 #include <igl/euler_characteristic.h>
+#include <igl/edge_flaps.h>
+#include <igl/unique_edge_map.h>
+#include <igl/intrinsic_delaunay_triangulation.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
+
 
 using namespace rmt;
 
@@ -84,6 +88,36 @@ void rmt::MeshFromVoronoi(const Eigen::MatrixXd& VOld,
     int i = 0;
     for (const Tri& t : Tris)
         F.row(i++) = Eigen::RowVector3i(std::get<0>(t), std::get<1>(t), std::get<2>(t));
+
+
+    
+    // Eigen::MatrixXi E;
+    // Eigen::MatrixXi uE;
+    // Eigen::VectorXi EMAP;
+    // Eigen::MatrixXi EF;
+    // Eigen::MatrixXi EI;
+    // std::vector<std::vector<int>> uE2E;
+    // igl::unique_edge_map(F, E, uE, EMAP, uE2E);
+    // // igl::edge_flaps(F, (const Eigen::MatrixXi)uE, (const Eigen::VectorXi)EMAP, EF, EI);
+    // Eigen::MatrixXd l;
+    // igl::edge_lengths(V, F, l);
+    // Eigen::MatrixXd l_intrinsic;
+    // Eigen::MatrixXi F_intrinsic;
+    // igl::intrinsic_delaunay_triangulation(l, F, l_intrinsic, F_intrinsic, E, uE, EMAP, uE2E);
+
+    // Eigen::MatrixXd SV = V;
+    // Eigen::VectorXi SVI, SVJ;
+    // igl::remove_duplicate_vertices(SV, F_intrinsic, 1e-2 * l.mean(), V, SVI, SVJ, F);
+    // SV = V;
+    // F_intrinsic.resize(F.rows(), 3);
+    // int LastFace = 0;
+    // for (int i = 0; i < F.rows(); ++i)
+    // {
+    //     if (F(i, 0) == F(i, 1) || F(i, 1) == F(i, 2) || F(i, 2) == F(i, 0))
+    //         continue;
+    //     F_intrinsic.row(LastFace++) = F.row(i);
+    // }
+    // igl::remove_unreferenced(SV, F_intrinsic, V, F, SVI, SVJ);
 }
 
 

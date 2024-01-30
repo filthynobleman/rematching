@@ -69,6 +69,10 @@ public:
     void RescaleInsideUnitSphere();
 
     void Resample(int OutputSize);
+    void MakeManifold();
+    void RemoveSmallComponents(double AreaFraction = 1e-2);
+    void RemoveDegenaracies(double DistanceThreshold = 1e-4);
+    void CleanUp(double AreaFraction = 1e-2, double DistanceThreshold = 1e-4);
 };
 
 

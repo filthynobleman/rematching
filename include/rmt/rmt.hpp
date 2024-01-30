@@ -20,6 +20,7 @@
 #include <rmt/weightmap.hpp>
 #include <rmt/eval.hpp>
 #include <rmt/io.hpp>
+#include <rmt/clean.hpp>
 
 
 namespace rmt
@@ -30,5 +31,12 @@ void Remesh(const Eigen::MatrixXd& Vin,
             int NSamples,
             Eigen::MatrixXd& Vout,
             Eigen::MatrixXi& Fout);
+
+void Remesh(const Eigen::MatrixXd& Vin,
+            const Eigen::MatrixXi& Fin,
+            int NSamples,
+            Eigen::MatrixXd& Vout,
+            Eigen::MatrixXi& Fout,
+            Eigen::VectorXi& Vidx);
 
 } // namespace rmt

@@ -12,6 +12,7 @@
 #include <rmt/mesh.hpp>
 #include <rmt/io.hpp>
 #include <rmt/preprocess.hpp>
+#include <rmt/clean.hpp>
 #include <rmt/utils.hpp>
 #include <cut/cut.hpp>
 #include <cassert>
@@ -185,4 +186,25 @@ void rmt::Mesh::Resample(int OutputSize)
 {
     double MEL = rmt::MaxEdgeLength(m_V, m_F, OutputSize);
     rmt::ResampleMesh(m_V, m_F, MEL);
+}
+
+
+void rmt::Mesh::MakeManifold()
+{
+    rmt::MakeManifold(m_V, m_F);
+}
+
+void rmt::Mesh::RemoveSmallComponents(double AreaFraction)
+{
+    rmt::RemoveSmallComponents(m_V, m_F, AreaFraction);
+}
+
+void rmt::Mesh::RemoveDegenaracies(double DistanceThreshold)
+{
+    rmt::RemoveDegeneracies(m_V, m_F, DistanceThreshold);
+}
+
+void rmt::Mesh::CleanUp(double AreaFraction, double DistanceThreshold)
+{
+    rmt::CleanUp(m_V, m_F, AreaFraction, DistanceThreshold);
 }

@@ -10,9 +10,16 @@
  * @date        2023-07-26
  */
 #include <rmt/preprocess.hpp>
+#include <rmt/utils.hpp>
 #include <unordered_map>
 #include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#define NOMINMAX
 #include <igl/doublearea.h>
+#include <igl/intrinsic_delaunay_triangulation.h>
+#include <igl/facet_components.h>
 
 struct MyPairHash
 {

@@ -23,18 +23,7 @@ cmake .. -DCMAKE_INSTALL_PREFIX="../install"
 cmake --build . --config release --parallel
 cmake --install .
 ```
-This will produce the application executables and the install files that are used to compile
-the MATLAB Mex functions.
-
-
-## Integration with MATLAB
-Inside the project's root folder there is the directory `matlab`. The directory contains
-- `compile.m`: a MATLAB script that compiles the Mex functions realizing the remeshing and resampling;
-- `rmt_remesh.m`: a MATLAB function that wraps the Mex function for the remeshing algorithm;
-- `rmt_resample.m`: a MATLAB function that wraps the Mex function for the resampling algorithm.
-- `rmt_wmap.m`: a MATLAB function that wraps the Mex function for computing the mapping that brings scalar functions from the remesh to the full-resolution shape.
-
-The compilation script `compile.m` assumes that the installation of the *CUT* library and this repository are carried out with the default settings, and that the compilation is ran from the `matlab` directory. **If this is not the case, please update the paths accordingly.**
+This will produce the application executables and will install the header and library files.
 
 
 ## Applications

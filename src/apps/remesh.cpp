@@ -22,6 +22,13 @@
 
 #include <igl/is_edge_manifold.h>
 #include <igl/is_vertex_manifold.h>
+// namespace Eigen
+// {
+//     Eigen::internal::all_t all = Eigen::placeholders::all;
+// };
+// #include <igl/remove_unreferenced.h>
+// #include <igl/remove_duplicate_vertices.h>
+
 
 #include <iostream>
 #include <fstream>
@@ -61,6 +68,16 @@ int main(int argc, const char* const argv[])
     std::cout << "Number of vertices:  " << Mesh.NumVertices() << std::endl;
     std::cout << "Number of triangles: " << Mesh.NumTriangles() << std::endl;
 
+    std::cout << "Repairing non manifoldness... ";
+    StartTimer();
+    Mesh.MakeManifold();
+    t = StopTimer();
+    TotTime += t;
+    std::cout << "Elapsed time is " << t << " s." << std::endl;
+    std::cout << "Number of vertices (after repairing):  " << Mesh.NumVertices() << std::endl;
+    std::cout << "Number of triangles (after repairing): " << Mesh.NumTriangles() << std::endl;
+    rmt::ExportMesh("repaired.off", Mesh.GetVertices(), Mesh.GetTriangles());
+
     int nVertsOrig = Mesh.NumVertices();
     Eigen::MatrixXi FOrig = Mesh.GetTriangles();
     if (Args.Resampling)
@@ -94,21 +111,11 @@ int main(int argc, const char* const argv[])
     std::cout << "Refining sampling to ensure closed ball property... ";
     StartTimer();
     rmt::FlatUnion FU(Mesh, VPart);
-    try
-    {
     do
     {
         FU.DetermineRegions();
         FU.ComputeTopologies();
     } while (!FU.FixIssues());
-        /* code */
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-        return -1;
-    }
-    
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;
@@ -119,6 +126,7 @@ int main(int argc, const char* const argv[])
     Eigen::MatrixXd VV;
     Eigen::MatrixXi FF;
     rmt::MeshFromVoronoi(Mesh.GetVertices(), Mesh.GetTriangles(), VPart, VV, FF);
+    rmt::CleanUp(VV, FF);
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;

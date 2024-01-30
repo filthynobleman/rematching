@@ -9,6 +9,7 @@
  * 
  * @date        2023-07-31
  */
+#define NOMINMAX
 #include <rmt/rmt.hpp>
 
 #include <Eigen/Dense>
@@ -51,6 +52,7 @@ struct rmtArgs
 
 struct RMTime
 {
+    double Repair;
     double Resampling;
     double Boundary;
     double VoronoiFPS;
@@ -156,10 +158,15 @@ int main(int argc, const char* const argv[])
             int NSamples = Args.NumSamples[j];
             if (!Args.FixedSize)
                 NSamples = Args.Resolution[j] * Mesh.NumVertices();
+            NSamples = std::min(NSamples, Mesh.NumVertices());
 
             std::cout << "Remeshing " << Args.InMeshes[i] << " to " << NSamples << " vertices... " << std::endl;
 
             int nVertsOrig = Mesh.NumVertices();
+            StartTimer();
+            Mesh.MakeManifold();
+            Times[RunIdx].Repair = StopTimer();
+
             if (Args.Resampling)
             {
                 StartTimer();
@@ -170,8 +177,6 @@ int main(int argc, const char* const argv[])
             StartTimer();
             Mesh.ComputeEdgesAndBoundaries();
             Times[RunIdx].Boundary = StopTimer();
-
-            Stats[RunIdx] = { Mesh.NumVertices(), Mesh.NumEdges(), Mesh.NumTriangles(), NSamples };
 
             StartTimer();
             rmt::VoronoiPartitioning VPart(Mesh);
@@ -193,9 +198,13 @@ int main(int argc, const char* const argv[])
             Eigen::MatrixXd VV;
             Eigen::MatrixXi FF;
             rmt::MeshFromVoronoi(Mesh.GetVertices(), Mesh.GetTriangles(), VPart, VV, FF);
+            rmt::CleanUp(VV, FF);
             Times[RunIdx].Reconstruction = StopTimer();
 
-            Times[RunIdx].Total = Times[RunIdx].Boundary + 
+            Stats[RunIdx] = { Mesh.NumVertices(), Mesh.NumEdges(), Mesh.NumTriangles(), (int)VV.rows() };
+
+            Times[RunIdx].Total = Times[RunIdx].Repair + 
+                                  Times[RunIdx].Boundary +
                                   Times[RunIdx].VoronoiFPS +
                                   Times[RunIdx].FlatUnion + 
                                   Times[RunIdx].Reconstruction + 
@@ -214,6 +223,12 @@ int main(int argc, const char* const argv[])
                 std::cerr << "\tCannot output the mesh to " << OutMesh << '.' << std::endl;
             else
                 std::cout << "\tOutput mesh written to " << OutMesh << '.' << std::endl;
+            std::string OutIdx = OutMesh.substr(0, OutMesh.rfind('.')) + "-idx.txt";
+            Eigen::VectorXi Idx = Eigen::VectorXi::Map(VPart.GetSamples().data(), VPart.NumSamples());
+            if (Eigen::saveMarketDense(Idx, OutIdx))
+                std::cout << "\tIndices saved to " << OutIdx << std::endl;
+            else
+                std::cerr << "\tCannot save the indices to " << OutIdx << std::endl;
 
             std::string OutWMap = OutputName(Args, j, Args.WMaps[i]);
             StartTimer();
@@ -246,7 +261,7 @@ int main(int argc, const char* const argv[])
     // Write header
     Out << "Mesh,";
     Out << "NVerts,NEdges,NTris,OutResolution,Success,";
-    Out << "Time,Resample,Boundary,VoronoiFPS,FlatUnion,Reconstruct,WMap";
+    Out << "Time,Repair,Resample,Boundary,VoronoiFPS,FlatUnion,Reconstruct,WMap";
     if (Args.Evaluate)
     {
         Out << ",Hausdorff,Chamfer,";
@@ -267,6 +282,7 @@ int main(int argc, const char* const argv[])
             Out << Stats[RunIdx].NVerts << ',' << Stats[RunIdx].NEdges << ',' << Stats[RunIdx].NTris << ',' << Stats[RunIdx].RMSize << ',';
             Out << !Failures[RunIdx] << ',';
             Out << Times[RunIdx].Total << ',';
+            Out << Times[RunIdx].Repair << ',';
             Out << Times[RunIdx].Resampling << ',';
             Out << Times[RunIdx].Boundary << ',';
             Out << Times[RunIdx].VoronoiFPS << ',';

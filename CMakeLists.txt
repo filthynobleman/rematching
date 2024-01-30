@@ -36,6 +36,7 @@ add_library(RMT STATIC  "${CMAKE_SOURCE_DIR}/src/rmt/graph.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/flatunion.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/reconstruction.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/preprocess.cpp"
+                        "${CMAKE_SOURCE_DIR}/src/rmt/clean.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/weightmap.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/eval.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/io.cpp"
@@ -44,16 +45,10 @@ target_link_libraries(RMT ${libCUT} Threads::Threads)
 set_target_properties(RMT PROPERTIES CXX_STANDARD 17)
 
 
-# Rematching for MATLAB
-add_library(MexRMT STATIC "${CMAKE_SOURCE_DIR}/src/mex/interface/rmt.cpp")
-target_link_libraries(MexRMT RMT)
-set_target_properties(MexRMT PROPERTIES CXX_STANDARD 17)
-
-
 # Installation settings
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/rmt"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/include")
-install(TARGETS RMT MexRMT
+install(TARGETS RMT
         LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/lib"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/lib"
         RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/bin")

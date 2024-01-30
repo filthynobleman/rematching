@@ -34,13 +34,13 @@ Graph::Graph(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F)
     int nTris = F.rows();
     for (int i = 0; i < nTris; ++i)
     {
-        Edges.emplace_back(std::min(F(i, 0), F(i, 1)), std::max(F(i, 0), F(i, 1)));
-        Edges.emplace_back(std::min(F(i, 1), F(i, 2)), std::max(F(i, 1), F(i, 2)));
-        Edges.emplace_back(std::min(F(i, 2), F(i, 0)), std::max(F(i, 2), F(i, 0)));
+        Edges.emplace_back(F(i, 0), F(i, 1));
+        Edges.emplace_back(F(i, 1), F(i, 2));
+        Edges.emplace_back(F(i, 2), F(i, 0));
 
-        Edges.emplace_back(std::max(F(i, 0), F(i, 1)), std::min(F(i, 0), F(i, 1)));
-        Edges.emplace_back(std::max(F(i, 1), F(i, 2)), std::min(F(i, 1), F(i, 2)));
-        Edges.emplace_back(std::max(F(i, 2), F(i, 0)), std::min(F(i, 2), F(i, 0)));
+        Edges.emplace_back(F(i, 1), F(i, 0));
+        Edges.emplace_back(F(i, 2), F(i, 1));
+        Edges.emplace_back(F(i, 0), F(i, 2));
     }
     std::sort(Edges.begin(), Edges.end());
     auto EEnd = std::unique(Edges.begin(), Edges.end());
