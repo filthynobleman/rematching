@@ -51,9 +51,7 @@ void DeleteTriangles(Eigen::MatrixXi& F,
             continue;
         
         // Swap the triangle to remove with the last manifold triangle
-        Eigen::VectorXi Tmp(F.row(t));
-        F.row(t) = F.row(EndPtr);
-        F.row(EndPtr--) = Tmp;
+        F.row(t) = F.row(EndPtr--);
     }
 
     // Resize F to remove the non-manifold triangles
@@ -66,6 +64,8 @@ void DeleteVertices(Eigen::MatrixXd& V,
 {
     // Mapping from old to new vertex indices
     Eigen::VectorXi VMap = Eigen::VectorXi::LinSpaced(V.rows(), 0, V.rows() - 1);
+    for (int v : VertDelete)
+        VMap[v] = -1;
 
 
     int EndPtr = V.rows() - 1;
@@ -86,9 +86,7 @@ void DeleteVertices(Eigen::MatrixXd& V,
         VMap[EndPtr] = v;
         VMap[v] = -1;
         // Swap the vertex content
-        Eigen::VectorXd Tmp(V.row(v));
-        V.row(v) = V.row(EndPtr);
-        V.row(EndPtr--) = Tmp;
+        V.row(v) = V.row(EndPtr--);
     }
 
     // Resize V to remove the non-manifold vertices
@@ -100,13 +98,12 @@ void DeleteVertices(Eigen::MatrixXd& V,
     {
         for (int j = 0; j < 3; ++j)
         {
-            if (VMap[F(i, j)] == -1)
+            F(i, j) = VMap[F(i,j)];
+            if (F(i, j) == -1)
             {
                 TriDelete.emplace(i);
                 break;
             }
-
-            F(i, j) = VMap[F(i,j)];
         }
     }
 
@@ -362,7 +359,10 @@ void rmt::RemoveSmallComponents(Eigen::MatrixXd& V,
             VertDelete.emplace(F(t, j));
     }
     DeleteTriangles(F, TriDelete);
-    DeleteVertices(V, F, VertDelete);
+    Eigen::MatrixXd VTmp = V;
+    Eigen::MatrixXi FTmp = F;
+    Eigen::VectorXi I;
+    igl::remove_unreferenced(VTmp, FTmp, V, F, I);
 }
 
 

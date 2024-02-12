@@ -76,7 +76,7 @@ int main(int argc, const char* const argv[])
     std::cout << "Elapsed time is " << t << " s." << std::endl;
     std::cout << "Number of vertices (after repairing):  " << Mesh.NumVertices() << std::endl;
     std::cout << "Number of triangles (after repairing): " << Mesh.NumTriangles() << std::endl;
-    rmt::ExportMesh("repaired.off", Mesh.GetVertices(), Mesh.GetTriangles());
+    rmt::ExportMesh("repaired.obj", Mesh.GetVertices(), Mesh.GetTriangles());
 
     int nVertsOrig = Mesh.NumVertices();
     Eigen::MatrixXi FOrig = Mesh.GetTriangles();
@@ -119,7 +119,7 @@ int main(int argc, const char* const argv[])
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;
-    std::cout << "Final vertex count is " << VPart.NumSamples() << '.' << std::endl;
+    std::cout << "Final samples count is " << VPart.NumSamples() << '.' << std::endl;
     
     std::cout << "Reconstructing mesh... ";
     StartTimer();
@@ -130,6 +130,7 @@ int main(int argc, const char* const argv[])
     t = StopTimer();
     TotTime += t;
     std::cout << "Elapsed time is " << t << " s." << std::endl;
+    std::cout << "Final vertex count is " << VV.rows() << '.' << std::endl;
 
 
     std::cout << "Total remeshing time is " << TotTime << " s." << std::endl;
