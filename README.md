@@ -20,7 +20,7 @@ From the root directory of the project, execute the following commands:
 mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX="../install"
-cmake --build . --config release --parallel
+cmake --build . --config release
 cmake --install .
 ```
 This will produce the application executables and will install the header and library files.
