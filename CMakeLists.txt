@@ -45,22 +45,24 @@ target_link_libraries(RMT ${libCUT} Threads::Threads)
 set_target_properties(RMT PROPERTIES CXX_STANDARD 17)
 
 
-# Installation settings
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/rmt"
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/include")
-install(TARGETS RMT
-        LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/lib"
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/lib"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}/rmt/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pyrmt")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pyrmt")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pyrmt")
+foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
+    string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
+    set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/pyrmt")
+    set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/pyrmt")
+    set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/pyrmt")
+endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 
+# Find PyBind
+set(pybind11_DIR "path/to/pybind11/share/cmake/pybind11")
+find_package(pybind11 REQUIRED)
 
-# Remeshing demo
-add_executable(Remesh "${CMAKE_SOURCE_DIR}/src/apps/remesh.cpp")
-target_link_libraries(Remesh RMT)
-set_target_properties(Remesh PROPERTIES CXX_STANDARD 17)
+# Add pybind module
+pybind11_add_module(PyRMT "${CMAKE_SOURCE_DIR}/src/python/pyrmt.cpp")
+target_link_libraries(PyRMT PRIVATE RMT)
 
-# Remeshing batch
-add_executable(BatchRemesh "${CMAKE_SOURCE_DIR}/src/apps/batch.cpp")
-target_link_libraries(BatchRemesh RMT)
-set_target_properties(BatchRemesh PROPERTIES CXX_STANDARD 17)
+# Copy example
+configure_file("${CMAKE_SOURCE_DIR}/python/sample.py" "${CMAKE_BINARY_DIR}/pyrmt/sample.py" COPYONLY)
