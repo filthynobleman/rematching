@@ -70,6 +70,7 @@ int main(int argc, const char* const argv[])
 
     std::cout << "Repairing non manifoldness... ";
     StartTimer();
+    size_t NVOrig = Mesh.NumVertices();
     Mesh.MakeManifold();
     t = StopTimer();
     TotTime += t;
@@ -155,7 +156,7 @@ int main(int argc, const char* const argv[])
     StartTimer();
     std::string WMap = Args.OutMesh;
     WMap = WMap.substr(0, WMap.rfind('.')) + ".mat";
-    auto W = rmt::WeightMap(Mesh.GetVertices(), VV, FF, nVertsOrig);
+    auto W = rmt::WeightMap(Mesh.GetVertices(), VV, FF, NVOrig);
     rmt::ExportWeightmap(WMap, W);
     t = StopTimer();
     std::cout << "Elapsed time is " << t << " s." << std::endl;
