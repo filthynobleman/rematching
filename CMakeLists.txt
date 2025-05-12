@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16.0)
 project(ReMatching LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # Add this line before any libraries are defined
 
 # Build and install libCUT
 message("Patching cmake file of cut library...") # this is necessary so that we can build it with the project
@@ -40,8 +41,9 @@ add_library(RMT STATIC  "${CMAKE_SOURCE_DIR}/src/rmt/graph.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/io.cpp"
                         "${CMAKE_SOURCE_DIR}/src/rmt/rmt.cpp")
 target_link_libraries(RMT cut Threads::Threads)
-set_target_properties(RMT PROPERTIES CXX_STANDARD 17)
-
+set_target_properties(RMT PROPERTIES 
+                      CXX_STANDARD 17
+                      POSITION_INDEPENDENT_CODE ON)
 
 # we don't want to reset all those files => otherwise our setup script doesn't find the python package and it will consequently not be copied correctly to our site-packages directory
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pyrmt")
