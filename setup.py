@@ -4,17 +4,15 @@ import re
 import sys
 import platform
 import subprocess
-
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 from pkg_resources import parse_version
-
+import shutil
 
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
-
 
 class CMakeBuild(build_ext):
     verbose = False
@@ -71,23 +69,22 @@ class CMakeBuild(build_ext):
             all_gcc_commands.extend(local_gccs)
         return all_gcc_commands
 
-
     def _find_suitable_gcc_gpp(self):
         # lists all gcc version in PATH
         all_gccs = self._get_all_gcc_commands()
         for gcc in all_gccs:
             matching_gpp = gcc.replace("cc", "++")
-            print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
-            return gcc, matching_gpp
+            gcc_path = shutil.which(gcc)
+            gpp_path = shutil.which(matching_gpp)
+            if  gcc_path and gpp_path:
+                print(f'Found suitable gcc/g++ version {gcc} {matching_gpp}')
+                return gcc_path, gpp_path
 
         raise RuntimeError("gcc >= 8.0 not found on the system")
 
-
     def _prepare_environment(self):
-        gcc, gpp = self._find_suitable_gcc_gpp()
+        gcc_path, gpp_path = self._find_suitable_gcc_gpp()
 
-        gcc_path = subprocess.check_output(f"which {gcc}", shell=True).decode("utf-8").rstrip()
-        gpp_path = subprocess.check_output(f"which {gpp}", shell=True).decode("utf-8").rstrip()
 
         os.environ["CC"] = gcc_path
         os.environ["CXX"] = gpp_path
@@ -96,9 +93,9 @@ class CMakeBuild(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + sys.executable,
-                      #'-DCMAKE_INSTALL_PREFIX="../install"',
+                      # '-DCMAKE_INSTALL_PREFIX="../install"',
                       '-DCMAKE_OSX_ARCHITECTURES=x86_64'
-                    ]
+                      ]
         cfg = 'Debug' if self.debug else 'Release'
         build_args = ['--config', cfg]
 
