@@ -15,6 +15,11 @@ This branch contains the Python bindings for the core C++ implementation.
 python setup.py install
 ```
 
+Alternatively, one can do:
+
+```bash
+pip install git+https://github.com/filthynobleman/rematching.git@python-binding
+```
 
 For building the project, you need [CMake](https://cmake.org/) and a C++ compiler compliant with [C++17 standard](https://en.cppreference.com/w/cpp/compiler_support/17).  
 The Python bindings also require a working installation of [Python 3](https://www.python.org/) and [pybind11](https://pybind11.readthedocs.io/en/stable/installing.html).  
